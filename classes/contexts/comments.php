@@ -19,50 +19,40 @@ use Automattic\Blocks_Everywhere\Engine;
 function comments_context( Engine $engine ) {
 	$default_comments = defined( 'BLOCKS_EVERYWHERE_COMMENTS' ) ? BLOCKS_EVERYWHERE_COMMENTS : false;
 
-	// Backward-compatible filter.
 	if ( ! apply_filters( 'blocks_everywhere_comments', $default_comments ) ) {
 		return null;
 	}
 
-	// Comments need to add the container via the form defaults filter.
+	// Comment form container.
 	add_filter( 'comment_form_defaults', function ( $defaults ) {
 		$defaults['class_container'] .= ' gutenberg-comments';
 		$defaults['comment_field']   .= '<div class="blocks-everywhere iso-editor__loading"></div>';
 		return $defaults;
 	} );
 
+	// Content display filter.
+	add_filter( 'comment_text', function ( $content ) use ( $engine ) {
+		return $engine->do_blocks( $content, 'comment_text' );
+	}, 8 );
+
 	// Pre-save block removal.
 	add_filter( 'pre_comment_content', function ( $content ) use ( $engine ) {
 		return $engine->remove_blocks( $content );
 	} );
 
+	// KSES for comments.
+	add_filter( 'wp_kses_allowed_html', function ( $tags, $context ) use ( $engine ) {
+		if ( 'pre_comment_content' === $context ) {
+			$tags = $engine->get_kses_for_allowed_blocks( $tags );
+		}
+		return $tags;
+	}, 10, 2 );
+
 	return [
-		'type'             => 'comments',
-		'textarea'         => '#comment',
-		'container'        => '.blocks-everywhere',
-		'trigger'          => 'comment_form_after',
-		'trigger_priority' => 10,
-		'condition'        => null, // Always load when trigger fires.
-		'body_class_hook'  => null,
-		'admin_hook'       => 'comment.php',
-		'admin_textarea'   => '.wp-editor-area',
-		'kses_filter'      => 'wp_kses_allowed_html',
-		'content_filters'  => [
-			[
-				'comment_text',
-				function ( $content ) use ( $engine ) {
-					return $engine->do_blocks( $content, 'comment_text' );
-				},
-				8,
-			],
-		],
-		'save_filters'     => [],
-		'disable_tinymce'  => true,
-		'wrap_textarea'    => true,
-		'metadata'         => null,
-		'setup_kses'       => true,
-		'kses_workaround'  => null,
-		'remove_filters'   => [],
-		'view_assets'      => false,
+		'type'       => 'comments',
+		'textarea'   => '#comment',
+		'container'  => '.blocks-everywhere',
+		'trigger'    => 'comment_form_after',
+		'admin_hook' => 'comment.php',
 	];
 }

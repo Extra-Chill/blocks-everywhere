@@ -6,6 +6,18 @@
  * processes context configuration arrays identically. External plugins
  * register contexts via the `blocks_everywhere_contexts` filter.
  *
+ * Context config shape (only 'type' and 'textarea' are required):
+ *
+ *     [
+ *         'type'         => 'studio',                      // Editor type identifier
+ *         'textarea'     => '#my-textarea',                 // CSS selector for textarea
+ *         'container'    => '.blocks-everywhere',           // CSS selector for editor container
+ *         'trigger'      => 'wp',                           // Action hook that triggers editor load
+ *         'condition'    => fn() => is_user_logged_in(),    // Callable, return true to load
+ *         'editor_setup' => fn($engine) => ...,             // Callable, runs after editor loads
+ *         'admin_hook'   => 'comment.php',                  // Admin page hook (string) or callable($hook)
+ *     ]
+ *
  * @package Automattic\Blocks_Everywhere
  * @since   2.0.0
  */
@@ -31,35 +43,6 @@ class Engine extends Handler {
 	private $active_context = null;
 
 	/**
-	 * Default config values for every context.
-	 *
-	 * @var array
-	 */
-	private static $defaults = [
-		'type'              => 'core',
-		'textarea'          => '',
-		'container'         => '.blocks-everywhere',
-		'trigger'           => null,
-		'trigger_priority'  => 10,
-		'condition'         => null,
-		'body_class_hook'   => null,
-		'admin_hook'        => null,
-		'admin_textarea'    => '.wp-editor-area',
-		'kses_filter'       => null,
-		'content_filters'   => [],
-		'save_filters'      => [],
-		'disable_tinymce'   => true,
-		'wrap_textarea'     => true,
-		'metadata'          => null,
-		'setup_kses'        => false,
-		'kses_workaround'   => null,
-		'remove_filters'    => [],
-		'view_assets'       => true,
-		'admin_editor'      => false,
-		'admin_condition'   => null,
-	];
-
-	/**
 	 * Constructor — call parent to register shared assets.
 	 */
 	public function __construct() {
@@ -67,103 +50,51 @@ class Engine extends Handler {
 	}
 
 	/**
-	 * Register a context configuration.
-	 *
-	 * @param string $id     Unique context identifier.
-	 * @param array  $config Context configuration array.
-	 */
-	public function register_context( string $id, array $config ) {
-		$this->contexts[ $id ] = wp_parse_args( $config, self::$defaults );
-	}
-
-	/**
-	 * Boot — called on `init`. Collects contexts from the filter, wires
-	 * trigger hooks, content display filters, and view assets.
+	 * Boot — called on `init`. Collects contexts from the filter,
+	 * wires trigger hooks, and sets up admin editors.
 	 */
 	public function boot() {
-		// Collect contexts via filter. Built-in contexts register at priority 5,
-		// so third-party code at default priority 10 can add/modify/remove.
 		$contexts = apply_filters( 'blocks_everywhere_contexts', [] );
 
 		foreach ( $contexts as $id => $config ) {
-			$this->register_context( $id, $config );
+			$this->contexts[ $id ] = $config;
 		}
 
-		// Wire each context.
 		foreach ( $this->contexts as $id => $config ) {
-			$this->wire_context( $id, $config );
+			$trigger = $config['trigger'] ?? null;
+			if ( ! $trigger ) {
+				continue;
+			}
+
+			$priority = $config['trigger_priority'] ?? 10;
+
+			// View assets load one priority earlier than the editor.
+			add_action(
+				$trigger,
+				function () {
+					$this->load_view_assets();
+				},
+				$priority - 1
+			);
+
+			// Editor trigger.
+			add_action(
+				$trigger,
+				function () use ( $id ) {
+					$this->load_editor_for_context( $id );
+				},
+				$priority
+			);
 		}
 
-		// Admin editors.
 		add_action( 'admin_enqueue_scripts', [ $this, 'admin_enqueue_scripts' ] );
 	}
 
 	/**
-	 * Wire a single context — trigger hooks, content filters, view assets.
+	 * Load the editor for a specific context.
 	 *
-	 * @param string $id     Context identifier.
-	 * @param array  $config Context configuration.
-	 */
-	private function wire_context( string $id, array $config ) {
-		// 1. Content display filters — always wire these regardless of editor load.
-		foreach ( $config['content_filters'] as $filter ) {
-			if ( is_array( $filter ) ) {
-				// [ filter_name, callback, priority ] format.
-				$filter_name = $filter[0];
-				$callback    = $filter[1];
-				$priority    = $filter[2] ?? 8;
-				add_filter( $filter_name, $callback, $priority );
-			} else {
-				// Simple string — use do_blocks.
-				add_filter(
-					$filter,
-					function ( $content ) use ( $filter ) {
-						return $this->do_blocks( $content, $filter );
-					},
-					8
-				);
-			}
-		}
-
-		// 2. View assets.
-		if ( $config['view_assets'] && $config['trigger'] ) {
-			add_action(
-				$config['trigger'],
-				function () {
-					$this->load_view_assets();
-				},
-				( $config['trigger_priority'] ?? 10 ) - 1
-			);
-		}
-
-		// 3. Editor trigger hook.
-		if ( $config['trigger'] ) {
-			add_action(
-				$config['trigger'],
-				function () use ( $id ) {
-					$this->load_editor_for_context( $id );
-				},
-				$config['trigger_priority']
-			);
-		}
-
-		// 4. Metadata filter.
-		if ( is_callable( $config['metadata'] ) ) {
-			add_filter(
-				'blocks_everywhere_editor_settings',
-				function ( $settings ) use ( $config ) {
-					$meta = call_user_func( $config['metadata'] );
-					if ( is_array( $meta ) ) {
-						$settings = array_merge( $settings, $meta );
-					}
-					return $settings;
-				}
-			);
-		}
-	}
-
-	/**
-	 * Load the editor for a specific context — called by the trigger hook.
+	 * Checks condition, loads the editor, then calls editor_setup so
+	 * the context can wire its own KSES, save filters, body class, etc.
 	 *
 	 * @param string $id Context identifier.
 	 */
@@ -175,105 +106,26 @@ class Engine extends Handler {
 		$config = $this->contexts[ $id ];
 
 		// Check condition.
-		if ( is_callable( $config['condition'] ) && ! call_user_func( $config['condition'] ) ) {
+		$condition = $config['condition'] ?? null;
+		if ( is_callable( $condition ) && ! call_user_func( $condition ) ) {
 			return;
 		}
 
 		$this->active_context = $id;
 
-		$textarea  = $config['textarea'];
-		$container = $config['container'];
+		$textarea  = $config['textarea'] ?? '';
+		$container = $config['container'] ?? '.blocks-everywhere';
 
-		// Admin override.
-		if ( is_admin() && $config['admin_textarea'] ) {
-			$textarea = $config['admin_textarea'];
-		}
+		// Wrap textarea + disable TinyMCE (default behavior, contexts can override).
+		add_filter( 'the_editor', [ $this, 'the_editor' ] );
+		add_filter( 'wp_editor_settings', [ $this, 'wp_editor_settings' ], 10, 2 );
 
-		// Wrap textarea.
-		if ( $config['wrap_textarea'] || $config['disable_tinymce'] ) {
-			add_filter( 'the_editor', [ $this, 'the_editor' ] );
-		}
-
-		// Disable TinyMCE/quicktags.
-		if ( $config['disable_tinymce'] ) {
-			add_filter( 'wp_editor_settings', [ $this, 'wp_editor_settings' ], 10, 2 );
-		}
-
-		// Load the editor.
 		$this->load_editor( $textarea, $container );
 
-		// Body class hook.
-		if ( $config['body_class_hook'] ) {
-			add_action(
-				$config['body_class_hook'],
-				function () {
-					add_filter( 'body_class', [ $this, 'body_class' ] );
-				}
-			);
-		}
-
-		// Save filters — empty content check.
-		foreach ( $config['save_filters'] as $filter ) {
-			if ( is_array( $filter ) ) {
-				// [ filter_name, callback, priority ] format.
-				$filter_name = $filter[0];
-				$callback    = $filter[1];
-				$priority    = $filter[2] ?? 12;
-				add_filter( $filter_name, $callback, $priority );
-			} else {
-				add_filter( $filter, [ $this, 'no_empty_block_content' ], 12 );
-			}
-		}
-
-		// KSES setup.
-		if ( $config['setup_kses'] && ! current_user_can( 'unfiltered_html' ) ) {
-			$this->setup_kses_for_context( $config );
-		}
-
-		// Remove conflicting filters.
-		foreach ( $config['remove_filters'] as $removal ) {
-			if ( is_array( $removal ) && count( $removal ) >= 2 ) {
-				remove_filter( $removal[0], $removal[1] );
-			}
-		}
-	}
-
-	/**
-	 * Set up KSES for a context.
-	 *
-	 * @param array $config Context configuration.
-	 */
-	private function setup_kses_for_context( array $config ) {
-		if ( $config['kses_workaround'] === 'bbpress' ) {
-			// bbPress-specific: allow block comments through bbp_encode_bad.
-			$save_filter_names = [];
-			foreach ( $config['save_filters'] as $filter ) {
-				$save_filter_names[] = is_array( $filter ) ? $filter[0] : $filter;
-			}
-
-			foreach ( $save_filter_names as $filter ) {
-				add_filter( $filter, 'Automattic\Blocks_Everywhere\Contexts\bbpress_allow_comments_pre', 9 );
-				add_filter( $filter, 'Automattic\Blocks_Everywhere\Contexts\bbpress_allow_comments_post', 11 );
-			}
-		}
-
-		// Add KSES tags for blocks.
-		$kses_filter = $config['kses_filter'] ?? 'wp_kses_allowed_html';
-		if ( $kses_filter === 'wp_kses_allowed_html' ) {
-			// Comments-style: context-aware KSES.
-			add_filter(
-				'wp_kses_allowed_html',
-				function ( $tags, $context ) {
-					if ( 'pre_comment_content' === $context ) {
-						$tags = $this->get_kses_for_allowed_blocks( $tags );
-					}
-					return $tags;
-				},
-				10,
-				2
-			);
-		} else {
-			add_filter( $kses_filter, [ $this, 'get_kses_for_allowed_blocks' ] );
+		// Let the context do its own setup.
+		$editor_setup = $config['editor_setup'] ?? null;
+		if ( is_callable( $editor_setup ) ) {
+			call_user_func( $editor_setup, $this );
 		}
 	}
 
@@ -284,15 +136,80 @@ class Engine extends Handler {
 	 */
 	public function get_editor_type() {
 		if ( $this->active_context && isset( $this->contexts[ $this->active_context ] ) ) {
-			return $this->contexts[ $this->active_context ]['type'];
+			return $this->contexts[ $this->active_context ]['type'] ?? 'core';
 		}
 
 		return 'core';
 	}
 
 	/**
-	 * Filter bbPress content and check for an empty block. Replace it with empty
-	 * content so the host system can detect it.
+	 * Admin editor support — check contexts for admin_hook matches.
+	 *
+	 * @param string $hook Admin page hook.
+	 */
+	public function admin_enqueue_scripts( $hook ) {
+		foreach ( $this->contexts as $id => $config ) {
+			$admin_hook = $config['admin_hook'] ?? null;
+			if ( ! $admin_hook ) {
+				continue;
+			}
+
+			$can_show = is_callable( $admin_hook )
+				? call_user_func( $admin_hook, $hook )
+				: ( $hook === $admin_hook );
+
+			if ( ! $can_show ) {
+				continue;
+			}
+
+			$this->active_context = $id;
+			$admin_textarea = $config['admin_textarea'] ?? '.wp-editor-area';
+
+			add_action(
+				'admin_head',
+				function () {
+					add_filter( 'the_editor', [ $this, 'the_editor' ] );
+					add_filter( 'wp_editor_settings', [ $this, 'wp_editor_settings' ], 10, 2 );
+				}
+			);
+
+			remove_action( 'admin_footer', 'gutenberg_block_editor_admin_footer' );
+
+			add_action(
+				'in_admin_header',
+				function () use ( $admin_textarea ) {
+					$this->load_editor( $admin_textarea );
+				}
+			);
+
+			break;
+		}
+	}
+
+	/**
+	 * Body class callback — adds editor indicator classes.
+	 *
+	 * Contexts call this from their editor_setup via:
+	 *     add_filter( 'body_class', [ $engine, 'body_class' ] );
+	 *
+	 * @param string[] $classes Body classes.
+	 * @return string[]
+	 */
+	public function body_class( $classes ) {
+		$classes[] = 'gutenberg-support';
+
+		if ( ! empty( $this->settings['editor']['hasUploadPermissions'] ) ) {
+			$classes[] = 'gutenberg-support-upload';
+		}
+
+		return $classes;
+	}
+
+	/**
+	 * Empty block content check — returns empty string if block content
+	 * is visually empty so the host system can detect missing content.
+	 *
+	 * Contexts hook this to save filters from their editor_setup.
 	 *
 	 * @param string $content Content.
 	 * @return string
@@ -302,73 +219,7 @@ class Engine extends Handler {
 		$stripped = wp_strip_all_tags( $stripped );
 		$stripped = trim( $stripped );
 
-		if ( empty( $stripped ) ) {
-			return '';
-		}
-
-		return $content;
-	}
-
-	/**
-	 * Body class callback — adds editor indicator classes.
-	 *
-	 * @param string[] $classes Body classes.
-	 * @return string[]
-	 */
-	public function body_class( $classes ) {
-		$classes[] = 'gutenberg-support';
-
-		$can_upload = false;
-		if ( isset( $this->settings['editor']['hasUploadPermissions'] ) && $this->settings['editor']['hasUploadPermissions'] ) {
-			$can_upload = true;
-		}
-
-		if ( $can_upload ) {
-			$classes[] = 'gutenberg-support-upload';
-		}
-
-		return $classes;
-	}
-
-	/**
-	 * Admin editor support — check all contexts for admin_hook matches.
-	 *
-	 * @param string $hook Admin page hook.
-	 */
-	public function admin_enqueue_scripts( $hook ) {
-		foreach ( $this->contexts as $id => $config ) {
-			$can_show = false;
-
-			if ( is_callable( $config['admin_condition'] ) ) {
-				$can_show = call_user_func( $config['admin_condition'], $hook );
-			} elseif ( $config['admin_hook'] ) {
-				$can_show = ( $hook === $config['admin_hook'] );
-			}
-
-			if ( $can_show ) {
-				$this->active_context = $id;
-
-				add_action(
-					'admin_head',
-					function () {
-						add_filter( 'the_editor', [ $this, 'the_editor' ] );
-						add_filter( 'wp_editor_settings', [ $this, 'wp_editor_settings' ], 10, 2 );
-					}
-				);
-
-				// Stops a problem with the Gutenberg plugin accessing widgets that don't exist.
-				remove_action( 'admin_footer', 'gutenberg_block_editor_admin_footer' );
-
-				add_action(
-					'in_admin_header',
-					function () use ( $config ) {
-						$this->load_editor( $config['admin_textarea'] );
-					}
-				);
-
-				break;
-			}
-		}
+		return empty( $stripped ) ? '' : $content;
 	}
 
 	/**
