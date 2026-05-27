@@ -1,0 +1,20 @@
+{
+  "auto_cleanup": false,
+  "changelog_target": "docs/CHANGELOG.md",
+  "extensions": {
+    "wordpress": {}
+  },
+  "id": "blocks-everywhere",
+  "remote_path": "wp-content/plugins/blocks-everywhere",
+  "remote_url": "https://github.com/Extra-Chill/blocks-everywhere.git",
+  "version_targets": [
+    {
+      "file": "blocks-everywhere.php",
+      "pattern": "(?m)^\\s*\\*?\\s*Version:\\s*([0-9.]+)"
+    },
+    {
+      "file": "blocks-everywhere.php",
+      "pattern": "const VERSION = '([0-9.]+)'"
+    }
+  ]
+}
