@@ -170,6 +170,56 @@ Useful events include:
 
 The generic lifecycle hook and UI-state event work is tracked in [#51](https://github.com/Extra-Chill/blocks-everywhere/issues/51) and [#58](https://github.com/Extra-Chill/blocks-everywhere/issues/58).
 
+When an integration needs a reusable per-instance boundary, define a host
+adapter on the same settings object used for the mount:
+
+```javascript
+const settings = {
+    ...wpBlocksEverywhere,
+    blocksEverywhere: {
+        ...wpBlocksEverywhere.blocksEverywhere,
+        hostAdapter: {
+            metadata: {
+                entityType: 'draft',
+                entityId: 'abc123',
+            },
+            setup( context ) {
+                const abortController = new AbortController();
+
+                context.container.classList.add( 'has-host-adapter' );
+
+                return () => {
+                    abortController.abort();
+                    context.container.classList.remove( 'has-host-adapter' );
+                };
+            },
+            onLoaded( { getContentApi } ) {
+                const contentApi = getContentApi();
+                // Content API is available after the editor React tree mounts.
+            },
+            onSave( blocks, serialized, context, { source } ) {
+                // Source is "input" or "change". Forward serialized content to
+                // the host persistence layer, autosave scheduler, or dirty state.
+            },
+            onUnmounted( { metadata } ) {
+                // Clear host UI associated with this editor instance.
+            },
+        },
+    },
+};
+
+const mount = window.blocksEverywhere.mountEditor( textarea, { settings } );
+```
+
+The adapter composes with the other portable APIs:
+
+- Use `setup()` to register slot fills and return their unregister callbacks.
+- Use `onSave()` with the content bridge's serialized block output.
+- Use `metadata` or `blocksEverywhere.hostContext` for server-bootstrapped
+  entity facts.
+- Use `onLoaded`, `onSubmit`, `onError`, `onBeforeUnmount`, and `onUnmounted`
+  for lifecycle coordination without custom polling.
+
 ### Server-Side Context Bootstrapping
 
 Server-side bootstrapping should produce the initial editor contract for a host surface before JavaScript mounts.
