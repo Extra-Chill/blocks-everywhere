@@ -68,8 +68,9 @@ import {
 } from '@wordpress/block-editor';
 import { EditorHistoryRedo, EditorHistoryUndo } from '@wordpress/editor';
 import { Button, Dropdown, Slot } from '@wordpress/components';
+import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
-import { listView as listViewIcon } from '@wordpress/icons';
+import { fullscreen, listView as listViewIcon } from '@wordpress/icons';
 
 /**
  * Toolbar configuration shape.
@@ -93,12 +94,22 @@ export interface ResolvedToolbarConfig {
 
 export interface ResolvedChromeConfig {
 	mode: 'inline' | 'full-height' | 'modal' | 'compact';
+	fullscreen: {
+		active?: boolean;
+		defaultActive: boolean;
+		enabled: boolean;
+		onChange?: ( active: boolean ) => void;
+	};
 	topBar: boolean;
 	toolbar: boolean;
 	secondaryToolbar: boolean;
 	footer: boolean;
 	documentSidebar: boolean;
 	inserterSidebar: boolean;
+}
+
+function resolveFullscreenActive( chrome: ResolvedChromeConfig, localActive: boolean ): boolean {
+	return typeof chrome.fullscreen.active === 'boolean' ? chrome.fullscreen.active : localActive;
 }
 
 interface EmbeddedEditorShellProps {
@@ -113,6 +124,8 @@ interface EmbeddedEditorShellProps {
 	/** Children rendered after the canvas body (e.g. registered slot fills, bridges). */
 	children?: ReactNode;
 }
+
+let fullscreenLockCount = 0;
 
 /**
  * Toggle button + dropdown panel that exposes the block list view.
@@ -163,22 +176,74 @@ function ListViewToggle(): JSX.Element {
  */
 export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): JSX.Element {
 	const { chrome, toolbar, styles, className, children } = props;
+	const [ localFullscreenActive, setLocalFullscreenActive ] = useState( chrome.fullscreen.defaultActive );
+	const fullscreenActive = chrome.fullscreen.enabled && resolveFullscreenActive( chrome, localFullscreenActive );
+	const hasTopBar = chrome.topBar || chrome.fullscreen.enabled;
 	const editorClassName = [
 		'blocks-everywhere-editor',
 		'block-editor',
 		`blocks-everywhere-editor--${ chrome.mode }`,
+		fullscreenActive ? 'blocks-everywhere-editor--fullscreen' : '',
 		className || '',
 	]
 		.filter( Boolean )
 		.join( ' ' );
+	const setFullscreenActive = useCallback(
+		( active: boolean ) => {
+			if ( typeof chrome.fullscreen.active !== 'boolean' ) {
+				setLocalFullscreenActive( active );
+			}
+
+			chrome.fullscreen.onChange?.( active );
+		},
+		[ chrome.fullscreen ]
+	);
+
+	useEffect( () => {
+		if ( ! fullscreenActive ) {
+			return;
+		}
+
+		const fullscreenClassName = 'blocks-everywhere-editor-is-fullscreen';
+		const onKeyDown = ( event: KeyboardEvent ) => {
+			if ( event.key === 'Escape' ) {
+				setFullscreenActive( false );
+			}
+		};
+
+		fullscreenLockCount += 1;
+		document?.body?.classList?.add( fullscreenClassName );
+		document?.documentElement?.classList?.add( fullscreenClassName );
+		document?.addEventListener?.( 'keydown', onKeyDown );
+
+		return () => {
+			fullscreenLockCount = Math.max( 0, fullscreenLockCount - 1 );
+			if ( fullscreenLockCount === 0 ) {
+				document?.body?.classList?.remove( fullscreenClassName );
+				document?.documentElement?.classList?.remove( fullscreenClassName );
+			}
+			document?.removeEventListener?.( 'keydown', onKeyDown );
+		};
+	}, [ fullscreenActive, setFullscreenActive ] );
 
 	return (
 		<>
 			<div className={ editorClassName }>
-				{ chrome.topBar && (
+				{ hasTopBar && (
 					<div className="blocks-everywhere-editor__top-bar">
 						<Slot name="blocks-everywhere/topBar" />
-						<Slot name="blocks-everywhere/windowControls" />
+						<div className="blocks-everywhere-editor__window-controls">
+							<Slot name="blocks-everywhere/windowControls" />
+							{ chrome.fullscreen.enabled && (
+								<Button
+									icon={ fullscreen }
+									label={ fullscreenActive ? __( 'Exit fullscreen' ) : __( 'Fullscreen' ) }
+									isPressed={ fullscreenActive }
+									onClick={ () => setFullscreenActive( ! fullscreenActive ) }
+									showTooltip
+								/>
+							) }
+						</div>
 					</div>
 				) }
 				{ chrome.toolbar && (

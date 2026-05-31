@@ -117,6 +117,7 @@ add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
 | Key | Default | Description |
 | --- | ------- | ----------- |
 | `mode` | `inline` | Adds a layout class for `inline`, `full-height`, `modal`, or `compact` editor shells. |
+| `fullscreen` | `false` | Enables the built-in fullscreen toggle and window controls row. Pass `{ enabled, defaultActive, active, onChange }` for host-controlled state. |
 | `topBar` | `false` | Enables the `topBar` and `windowControls` slots above the primary toolbar. |
 | `toolbar` | `true` | Shows the primary toolbar row. Set `false` when a host fully replaces toolbar chrome. |
 | `secondaryToolbar` | `false` | Enables a host-owned row below the primary toolbar. |
@@ -130,6 +131,7 @@ Register fills with `window.blocksEverywhere.registerSlotFill( slot, renderFn )`
 add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
 	$settings['blocksEverywhere']['chrome'] = array(
 		'mode'            => 'modal',
+		'fullscreen'      => true,
 		'topBar'          => true,
 		'secondaryToolbar' => true,
 		'documentSidebar' => true,

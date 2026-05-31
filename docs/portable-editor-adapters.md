@@ -525,6 +525,32 @@ The adapter composes with the other portable APIs:
 
 `hostAdapter.onSave()` remains as a legacy alias for `onContentChange()` during the portable adapter migration. Treat save wording as persistence-specific in new adapters.
 
+### Fullscreen Chrome
+
+Use `blocksEverywhere.chrome.fullscreen` when the host wants an editor-controlled fullscreen affordance instead of building its own wrapper state. The built-in control renders in the `windowControls` area, enables that chrome row automatically, fixes the editor shell to the viewport, locks page scrolling, exits on Escape, and calls `onChange` whenever state changes.
+
+```javascript
+window.blocksEverywhere.mountEditor( textarea, {
+	settings: {
+		...wpBlocksEverywhere,
+		blocksEverywhere: {
+			...wpBlocksEverywhere.blocksEverywhere,
+			chrome: {
+				...wpBlocksEverywhere.blocksEverywhere.chrome,
+				topBar: true,
+				fullscreen: {
+					enabled: true,
+					defaultActive: false,
+					onChange: ( active ) => hostSetFullscreenActive( active ),
+				},
+			},
+		},
+	},
+} );
+```
+
+For fully controlled host state, pass `fullscreen.active` and update it from `onChange`. Passing `fullscreen: true` enables BE-owned local state. Hosts can also render custom controls into `windowControls`; the built-in toggle is intentionally small so BE provides the valuable P2-style behavior without making assumptions about host app navigation or modals.
+
 Use `blocksEverywhere.runtimeAdapter` only when a host needs lower-level runtime behavior than lifecycle callbacks and services can express. It can prepare content before first load, install host event handlers, react to serialized content changes, resolve a Gutenberg-compatible media upload function, and clean up on unmount. Passing `false` disables built-in runtime adapters for that mount. The bundled bbPress integration is one runtime adapter implementation; generic host apps should prefer services, content bridges, entity bridges, and `hostAdapter` callbacks until they need this lower-level hook.
 
 ### Server-Side Context Bootstrapping

@@ -103,6 +103,13 @@
 		justify-content: space-between;
 	}
 
+	.blocks-everywhere-editor__window-controls {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-xs, 4px);
+		margin-left: auto;
+	}
+
 	.blocks-everywhere-editor__body-row {
 		display: flex;
 		flex: 1;
@@ -151,6 +158,18 @@
 	&.blocks-everywhere-editor--modal,
 	&.blocks-everywhere-editor--full-height {
 		height: 100%;
+	}
+
+	&.blocks-everywhere-editor--fullscreen {
+		position: fixed;
+		inset: 0;
+		width: 100vw;
+		height: 100vh;
+		max-width: none;
+		max-height: none;
+		z-index: 999999;
+		border: 0;
+		border-radius: 0;
 	}
 
 	// Default canvas iframe sizing. Gutenberg's `<BlockCanvas height="100%">`
@@ -277,6 +296,10 @@
 			margin-left: 0;
 		}
 	}
+}
+
+.blocks-everywhere-editor-is-fullscreen {
+	overflow: hidden;
 }
 
 // Popover and sidebar styles (elements that render to body)

@@ -323,6 +323,11 @@ class Engine extends Handler {
 			$settings['blocksEverywhere']['features'] = array_merge( $settings['blocksEverywhere']['features'] ?? [], $features );
 		}
 
+		$chrome = $this->resolve_context_value( $config['chrome'] ?? null, $settings, $id, $config );
+		if ( is_array( $chrome ) ) {
+			$settings['blocksEverywhere']['chrome'] = array_merge( $settings['blocksEverywhere']['chrome'] ?? [], $chrome );
+		}
+
 		$patterns = $this->resolve_context_value( $config['patterns'] ?? null, $settings, $id, $config );
 		if ( is_array( $patterns ) ) {
 			$settings['blocksEverywhere']['patterns']['items'] = array_values( $patterns );
