@@ -23,9 +23,10 @@ import { useDispatch } from '@wordpress/data';
  */
 import BuddyPress from './buddypress';
 import ContentBridge from './content-bridge';
-import { createContentBridgeController, normalizeLoadedBlocks } from './content-bridge-controller';
+import { createContentBridgeController } from './content-bridge-controller';
 import DetachedSidebar from './detached-sidebar';
-import { getBlockContext, getEditorContext, MaybeEditorDataBoundary } from './editor-data-boundary';
+import { getBlockContext, getEditorContext } from './editor-context';
+import { MaybeEditorDataBoundary } from './editor-data-boundary';
 import EmbeddedEditorShell, { type ResolvedChromeConfig, type ResolvedToolbarConfig } from './embedded-editor-shell';
 import type {
 	EditorHostRuntimeAdapter,
@@ -37,8 +38,8 @@ import { createEntityBridgeController, getEntityBridgeEntity } from './entity-br
 import {
 	createHostAdapterContext,
 	dispatchLifecycleEvent,
+	getLifecycleCallbackName,
 	getHostAdapter,
-	lifecycleCallbackNames,
 	runHostAdapterCallback,
 	runHostAdapterCleanup,
 } from './lifecycle';
@@ -406,7 +407,7 @@ function createEditorContainer( container, textarea, settings ) {
 	};
 	const emitContentHook = ( name, blocks, serialized ) => {
 		const context = createHostAdapterContext( { container, instance, settings, textarea } );
-		const callbackName = lifecycleCallbackNames[ name ];
+		const callbackName = getLifecycleCallbackName( name );
 
 		runHostAdapterCallback( hostAdapter, 'onContent', [ name, blocks, serialized, context ] );
 		if ( callbackName ) {
@@ -457,7 +458,6 @@ function createEditorContainer( container, textarea, settings ) {
 		container,
 		contentBridge,
 		instance,
-		normalizeLoadedBlocks,
 		settings,
 		textarea,
 	} );

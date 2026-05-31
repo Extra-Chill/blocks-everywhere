@@ -6,7 +6,7 @@ import { parse, rawHandler, serialize } from '@wordpress/blocks';
 /**
  * Internal dependencies
  */
-import { getBlockContext, getEditorContext } from './editor-data-boundary';
+import { getBlockContext, getEditorContext } from './editor-context';
 import { getEntityBridgeEntity } from './entity-bridge-controller';
 import { toArray } from './utils';
 

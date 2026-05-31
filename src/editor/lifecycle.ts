@@ -1,10 +1,10 @@
 /**
  * Internal dependencies
  */
-import { getEditorContext } from './editor-data-boundary';
+import { getEditorContext } from './editor-context';
 import { getEntityBridgeEntity } from './entity-bridge-controller';
 
-export const lifecycleCallbackNames = {
+const lifecycleCallbackNames = {
 	'before-mount': 'onBeforeMount',
 	mounted: 'onMounted',
 	'before-load': 'onBeforeLoad',
@@ -21,6 +21,10 @@ export const lifecycleCallbackNames = {
 	'before-unmount': 'onBeforeUnmount',
 	unmounted: 'onUnmounted',
 };
+
+export function getLifecycleCallbackName( name ) {
+	return lifecycleCallbackNames[ name ];
+}
 
 const hostAdapterContentEvents = new Set( [ 'input', 'change', 'content-change', 'save' ] );
 
