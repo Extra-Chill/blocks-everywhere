@@ -62,8 +62,11 @@ import {
 	Inserter,
 	ObserveTyping,
 	WritingFlow,
-	// @ts-ignore __experimentalListView is unstable but is the public surface
-	// for the block list-view tree; the public ListView alias has not landed.
+	// Gutenberg portability gap: List View reads from `core/block-editor` and is
+	// exactly the primitive BE needs, but Gutenberg only exports it as
+	// `__experimentalListView` today. BE keeps the setting stable while isolating
+	// the unstable component name here.
+	// @ts-ignore __experimentalListView is unstable.
 	__experimentalListView as ListView,
 } from '@wordpress/block-editor';
 import { EditorHistoryRedo, EditorHistoryUndo } from '@wordpress/editor';
@@ -130,11 +133,10 @@ let fullscreenLockCount = 0;
 /**
  * Toggle button + dropdown panel that exposes the block list view.
  *
- * Built on the public `@wordpress/block-editor` `__experimentalListView`
- * surface, which reads from `core/block-editor` state directly — so it works
- * the same whether or not the host mounts an `EditorProvider`. The dropdown
- * keeps the panel self-contained inside the BE toolbar; no external sidebar
- * plumbing is required.
+ * Built on Gutenberg's post-agnostic list-view primitive. The export is still
+ * experimental, but the BE contract is the stable `toolbar.listView` option,
+ * not the upstream component name. The dropdown keeps the panel self-contained
+ * inside the BE toolbar; no external sidebar plumbing is required.
  */
 function ListViewToggle(): JSX.Element {
 	return (
