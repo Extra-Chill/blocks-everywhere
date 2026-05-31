@@ -6,7 +6,7 @@ import { addFilter } from '@wordpress/hooks';
 /**
  * Internal dependencies
  */
-import type { EditorServiceContext, EditorServices } from './editor-services';
+import type { EditorHostRuntimeAdapter, EditorServiceContext, EditorServices } from './editor-services';
 
 type BbPressAdapterOptions = {
 	container: HTMLElement;
@@ -79,7 +79,7 @@ export function createBbPressAdapter( {
 	serviceContext,
 	scopedApiFetch,
 	notifyService,
-}: BbPressAdapterOptions ) {
+}: BbPressAdapterOptions ): EditorHostRuntimeAdapter {
 	const bbpress = settings?.bbpress || {};
 	const isTopicEdit = Boolean( bbpress?.isTopicEdit );
 	const isReplyEdit = Boolean( bbpress?.isReplyEdit );
@@ -261,63 +261,25 @@ export function createBbPressAdapter( {
 	const abortDraftRequests = () => {
 		draftRequestControllers.forEach( ( controller ) => controller.abort() );
 	};
+	const scheduleAutosave = ( serializedContent: unknown ) => {
+		if ( isSubmitting || isContextSwitching ) {
+			return;
+		}
 
-	return {
-		get mediaEndpoint() {
-			return mediaEndpoint;
-		},
-		scheduleAutosave( serializedContent: unknown ) {
-			if ( isSubmitting || isContextSwitching ) {
-				return;
-			}
-
-			lastSerializedContent = typeof serializedContent === 'string' ? serializedContent : '';
-			if ( hasInjectedAutosaveService ) {
-				if ( injectedAutosave === null ) {
-					return;
-				}
-
-				const draft = buildDraftPayload( lastSerializedContent );
-				const payload = draft || {
-					content: lastSerializedContent,
-					editorType: settings?.editorType || '',
-					textareaName: textarea?.name || '',
-				};
-				const payloadString = JSON.stringify( payload );
-
-				if ( payloadString === lastSavedPayload ) {
-					return;
-				}
-
-				clearAutosaveTimer();
-
-				autosaveTimer = setTimeout( async () => {
-					if ( isSubmitting || isContextSwitching ) {
-						return;
-					}
-
-					try {
-						await saveWithInjectedAutosave( payload );
-						lastSavedPayload = payloadString;
-					} catch ( error ) {
-						if ( error?.name === 'AbortError' ) {
-							return;
-						}
-
-						notifyService( services, 'error', 'Autosave failed.', serviceContext, error );
-						// eslint-disable-next-line no-console
-						console.error( 'Blocks Everywhere: injected autosave failed', error );
-					}
-				}, getAutosaveDelay() );
+		lastSerializedContent = typeof serializedContent === 'string' ? serializedContent : '';
+		if ( hasInjectedAutosaveService ) {
+			if ( injectedAutosave === null ) {
 				return;
 			}
 
 			const draft = buildDraftPayload( lastSerializedContent );
-			if ( ! draft || ! hasAnyDraftContent( draft ) ) {
-				return;
-			}
+			const payload = draft || {
+				content: lastSerializedContent,
+				editorType: settings?.editorType || '',
+				textareaName: textarea?.name || '',
+			};
+			const payloadString = JSON.stringify( payload );
 
-			const payloadString = JSON.stringify( draft );
 			if ( payloadString === lastSavedPayload ) {
 				return;
 			}
@@ -330,18 +292,56 @@ export function createBbPressAdapter( {
 				}
 
 				try {
-					await requestDraft( 'POST', draft );
+					await saveWithInjectedAutosave( payload );
 					lastSavedPayload = payloadString;
 				} catch ( error ) {
 					if ( error?.name === 'AbortError' ) {
 						return;
 					}
+
+					notifyService( services, 'error', 'Autosave failed.', serviceContext, error );
 					// eslint-disable-next-line no-console
-					console.error( 'Blocks Everywhere: bbPress draft autosave failed', error );
+					console.error( 'Blocks Everywhere: injected autosave failed', error );
 				}
-			}, 800 );
+			}, getAutosaveDelay() );
+			return;
+		}
+
+		const draft = buildDraftPayload( lastSerializedContent );
+		if ( ! draft || ! hasAnyDraftContent( draft ) ) {
+			return;
+		}
+
+		const payloadString = JSON.stringify( draft );
+		if ( payloadString === lastSavedPayload ) {
+			return;
+		}
+
+		clearAutosaveTimer();
+
+		autosaveTimer = setTimeout( async () => {
+			if ( isSubmitting || isContextSwitching ) {
+				return;
+			}
+
+			try {
+				await requestDraft( 'POST', draft );
+				lastSavedPayload = payloadString;
+			} catch ( error ) {
+				if ( error?.name === 'AbortError' ) {
+					return;
+				}
+				// eslint-disable-next-line no-console
+				console.error( 'Blocks Everywhere: bbPress draft autosave failed', error );
+			}
+		}, 800 );
+	};
+
+	return {
+		onContent( _blocks: object[], serializedContent: string ) {
+			scheduleAutosave( serializedContent );
 		},
-		async restoreDraftIfNeeded() {
+		async onBeforeLoad() {
 			if ( ! shouldAutorestoreDraft() ) {
 				return;
 			}
@@ -407,7 +407,7 @@ export function createBbPressAdapter( {
 					if ( titleInput && ! titleInput.__blocksEverywhereDraftTitleInstalled ) {
 						titleInput.__blocksEverywhereDraftTitleInstalled = true;
 						const titleHandler = () => {
-							this.scheduleAutosave( lastSerializedContent || textarea?.value || '' );
+							scheduleAutosave( lastSerializedContent || textarea?.value || '' );
 						};
 
 						titleInput.addEventListener( 'input', titleHandler );
@@ -551,42 +551,31 @@ export function createBbPressAdapter( {
 				} );
 			}
 		},
-		async uploadMedia( file: File ) {
-			const formData = new FormData();
-			formData.append( 'file', file );
-			formData.append( 'context', 'content_embed' );
-			if ( topicId ) {
-				formData.append( 'target_id', String( topicId ) );
+		resolveMediaUpload( context: EditorServiceContext & { canUploadMedia: boolean } ) {
+			if ( ! context.canUploadMedia || ! mediaEndpoint ) {
+				return null;
 			}
 
-			const uploadNonce = settings?.restNonce || window?.wpApiSettings?.nonce || null;
-			const headers = uploadNonce ? { 'X-WP-Nonce': uploadNonce } : undefined;
+			return ( { filesList, onFileChange, onError } ) => {
+				const files = Array.from( filesList );
 
-			if ( ! mediaEndpoint ) {
-				throw new Error( 'Media endpoint not configured.' );
-			}
+				Promise.all(
+					files.map( async ( file ) => {
+						const result = await uploadMedia( file );
+						const attachment = result?.attachment;
+						if ( attachment ) {
+							return attachment;
+						}
 
-			const response = await window.fetch( new URL( mediaEndpoint, window.location.origin ).toString(), {
-				method: 'POST',
-				credentials: 'same-origin',
-				headers,
-				body: formData,
-			} );
-
-			if ( ! response.ok ) {
-				let errorMessage = 'Upload failed.';
-				try {
-					const payload = await response.json();
-					if ( payload?.message ) {
-						errorMessage = payload.message;
-					}
-				} catch ( error ) {
-					// Keep the generic fallback message when the error body is not JSON.
-				}
-				throw new Error( errorMessage );
-			}
-
-			return response.json();
+						return {
+							id: result?.attachment_id,
+							url: result?.url,
+						};
+					} )
+				)
+					.then( ( mediaItems ) => onFileChange( mediaItems ) )
+					.catch( ( error ) => onError( error ) );
+			};
 		},
 		cleanup() {
 			clearAutosaveTimer();
@@ -599,4 +588,42 @@ export function createBbPressAdapter( {
 			cleanupCallbacks.forEach( ( cleanup ) => cleanup() );
 		},
 	};
+
+	async function uploadMedia( file: File ) {
+		const formData = new FormData();
+		formData.append( 'file', file );
+		formData.append( 'context', 'content_embed' );
+		if ( topicId ) {
+			formData.append( 'target_id', String( topicId ) );
+		}
+
+		const uploadNonce = settings?.restNonce || window?.wpApiSettings?.nonce || null;
+		const headers = uploadNonce ? { 'X-WP-Nonce': uploadNonce } : undefined;
+
+		if ( ! mediaEndpoint ) {
+			throw new Error( 'Media endpoint not configured.' );
+		}
+
+		const response = await window.fetch( new URL( mediaEndpoint, window.location.origin ).toString(), {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers,
+			body: formData,
+		} );
+
+		if ( ! response.ok ) {
+			let errorMessage = 'Upload failed.';
+			try {
+				const payload = await response.json();
+				if ( payload?.message ) {
+					errorMessage = payload.message;
+				}
+			} catch ( error ) {
+				// Keep the generic fallback message when the error body is not JSON.
+			}
+			throw new Error( errorMessage );
+		}
+
+		return response.json();
+	}
 }

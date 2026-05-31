@@ -349,6 +349,11 @@ class Engine extends Handler {
 			}
 		}
 
+		$disallowed_block_variations = $this->resolve_context_value( $config['disallowed_block_variations'] ?? null, $settings, $id, $config );
+		if ( is_array( $disallowed_block_variations ) ) {
+			$settings['blocksEverywhere']['blockVariations']['disallow'] = array_values( $disallowed_block_variations );
+		}
+
 		$entity_bridge = $this->resolve_context_value( $config['entity_bridge'] ?? null, $settings, $id, $config );
 		if ( is_array( $entity_bridge ) ) {
 			$settings['blocksEverywhere']['entityBridge'] = array_merge(

@@ -26,12 +26,22 @@ import { createBbPressAdapter } from './bbpress-adapter';
 import ContentBridge from './content-bridge';
 import DetachedSidebar from './detached-sidebar';
 import EmbeddedEditorShell, { type ResolvedChromeConfig, type ResolvedToolbarConfig } from './embedded-editor-shell';
-import type { EditorMountSettings, EditorServiceContext, EditorServices } from './editor-services';
+import type {
+	EditorHostRuntimeAdapter,
+	EditorMountSettings,
+	EditorServiceContext,
+	EditorServices,
+} from './editor-services';
 import PostEntityShell, { EditorEditsBridge, type PostEntityRef } from './post-entity-shell';
 import { RegisteredSlotFills } from './slot-fills';
 import { getBootstrapSettingsSummary } from '../bootstrap-settings';
 
-export type { EditorMountSettings, EditorServiceContext, EditorServices } from './editor-services';
+export type {
+	EditorHostRuntimeAdapter,
+	EditorMountSettings,
+	EditorServiceContext,
+	EditorServices,
+} from './editor-services';
 
 export interface EditorMountOptions {
 	container?: HTMLElement | string | null;
@@ -1024,22 +1034,69 @@ function createContainer( textarea, existingContainer ) {
 	return { container, inserted: true };
 }
 
-function PageGlobalBbpressBlockVariationPruner( { settings } ) {
+function getPageGlobalDisallowedBlockVariations( settings ) {
+	const configured = settings?.blocksEverywhere?.blockVariations?.disallow;
+	const variations = Array.isArray( configured ) ? [ ...configured ] : [];
+
+	// Back-compat: bbPress needs these Stretchy-only variations removed anywhere
+	// on the page because Gutenberg block variations are registered globally.
+	if ( settings?.editorType === 'bbpress' || getBootstrapSettingsSummary().hasBbpressEditor ) {
+		variations.push(
+			{ blockName: 'core/paragraph', variationName: 'stretchy-paragraph' },
+			{ blockName: 'core/heading', variationName: 'stretchy-heading' }
+		);
+	}
+
+	return variations;
+}
+
+function PageGlobalBlockVariationPruner( { settings } ) {
 	useEffect( () => {
-		// Core block variations are registered page-wide. Prune bbPress-only
-		// Stretchy variations when any registered bootstrap settings mount bbPress.
-		if ( settings?.editorType !== 'bbpress' && ! getBootstrapSettingsSummary().hasBbpressEditor ) {
+		const variations = getPageGlobalDisallowedBlockVariations( settings );
+		if ( variations.length === 0 ) {
 			return;
 		}
 
 		try {
-			window?.wp?.blocks?.unregisterBlockVariation?.( 'core/paragraph', 'stretchy-paragraph' );
-			window?.wp?.blocks?.unregisterBlockVariation?.( 'core/heading', 'stretchy-heading' );
+			variations.forEach( ( variation ) => {
+				const blockName = variation?.blockName || variation?.block;
+				const variationName = variation?.variationName || variation?.name;
+				if ( blockName && variationName ) {
+					window?.wp?.blocks?.unregisterBlockVariation?.( blockName, variationName );
+				}
+			} );
 		} catch ( error ) {
 			// eslint-disable-next-line no-console
 			console.error( 'Blocks Everywhere: failed to prune block variations', error );
 		}
-	}, [ settings?.editorType ] );
+	}, [ settings ] );
+
+	return null;
+}
+
+function resolveHostRuntimeAdapter( options ): EditorHostRuntimeAdapter | null {
+	const { container, notify, scopedApiFetch, serviceContext, services, settings, textarea } = options;
+	const configuredAdapter = settings?.blocksEverywhere?.runtimeAdapter;
+
+	if ( configuredAdapter === false || configuredAdapter === null ) {
+		return null;
+	}
+
+	if ( configuredAdapter && typeof configuredAdapter === 'object' ) {
+		return configuredAdapter;
+	}
+
+	if ( settings?.editorType === 'bbpress' ) {
+		return createBbPressAdapter( {
+			container,
+			settings,
+			textarea,
+			services,
+			serviceContext,
+			scopedApiFetch,
+			notifyService: notify,
+		} );
+	}
 
 	return null;
 }
@@ -1084,18 +1141,15 @@ function createEditorContainer( container, textarea, settings ) {
 	const contentBridge = createContentBridgeController( textarea, settings );
 	let entityBridge = null;
 	let hasEditorFocus = false;
-	const bbpressAdapter =
-		settings?.editorType === 'bbpress'
-			? createBbPressAdapter( {
-					container,
-					settings,
-					textarea,
-					services,
-					serviceContext,
-					scopedApiFetch,
-					notifyService,
-			  } )
-			: null;
+	const runtimeAdapter = resolveHostRuntimeAdapter( {
+		container,
+		notify: notifyService,
+		scopedApiFetch,
+		serviceContext,
+		services,
+		settings,
+		textarea,
+	} );
 
 	const emitLifecycle = ( name, detail = {} ) => {
 		dispatchLifecycleEvent( name, { container, detail, settings, textarea } );
@@ -1207,14 +1261,14 @@ function createEditorContainer( container, textarea, settings ) {
 							const serialized = contentBridge.save( newBlocks );
 							entityBridge.saveEdits( newBlocks, serialized, 'input' );
 							emitContentHook( 'input', newBlocks, serialized );
-							bbpressAdapter?.scheduleAutosave( serialized );
+							runtimeAdapter?.onContent?.( newBlocks, serialized, 'input' );
 						} }
 						onChange={ ( newBlocks ) => {
 							settings?.blocksEverywhere?.__experimentalOnChange?.( newBlocks );
 							const serialized = contentBridge.save( newBlocks );
 							entityBridge.saveEdits( newBlocks, serialized, 'change' );
 							emitContentHook( 'change', newBlocks, serialized );
-							bbpressAdapter?.scheduleAutosave( serialized );
+							runtimeAdapter?.onContent?.( newBlocks, serialized, 'change' );
 						} }
 						onSelection={ ( selection ) =>
 							settings?.blocksEverywhere?.__experimentalOnSelection?.( selection )
@@ -1242,7 +1296,7 @@ function createEditorContainer( container, textarea, settings ) {
 								{ postEntity?.id > 0 && <EditorEditsBridge blocks={ blocks } /> }
 
 								{ settings.editorType === 'buddypress' && <BuddyPress textarea={ textarea } /> }
-								<PageGlobalBbpressBlockVariationPruner settings={ settings } />
+								<PageGlobalBlockVariationPruner settings={ settings } />
 							</>
 						) }
 					</EmbeddedBlockEditor>
@@ -1251,7 +1305,7 @@ function createEditorContainer( container, textarea, settings ) {
 		);
 	};
 
-	bbpressAdapter?.installHandlers();
+	runtimeAdapter?.installHandlers?.();
 
 	if ( services?.fetchLinkSuggestions !== undefined ) {
 		settings.editor.__experimentalFetchLinkSuggestions = services.fetchLinkSuggestions || undefined;
@@ -1263,31 +1317,14 @@ function createEditorContainer( container, textarea, settings ) {
 		if ( services.mediaUpload ) {
 			ensureMediaUploadFilterInstalled();
 		}
-	} else if ( settings?.editorType === 'bbpress' ) {
-		if ( ! hasUploadPermission || ! bbpressAdapter?.mediaEndpoint ) {
-			settings.editor.mediaUpload = null;
-		} else {
-			settings.editor.mediaUpload = ( { filesList, onFileChange, onError } ) => {
-				const files = Array.from( filesList );
+	} else if ( runtimeAdapter?.resolveMediaUpload ) {
+		const resolvedMediaUpload = runtimeAdapter.resolveMediaUpload( {
+			...serviceContext,
+			canUploadMedia: hasUploadPermission,
+		} );
+		settings.editor.mediaUpload = resolvedMediaUpload || null;
 
-				Promise.all(
-					files.map( async ( file ) => {
-						const result = await bbpressAdapter.uploadMedia( file );
-						const attachment = result?.attachment;
-						if ( attachment ) {
-							return attachment;
-						}
-
-						return {
-							id: result?.attachment_id,
-							url: result?.url,
-						};
-					} )
-				)
-					.then( ( mediaItems ) => onFileChange( mediaItems ) )
-					.catch( ( error ) => onError( error ) );
-			};
-
+		if ( resolvedMediaUpload ) {
 			ensureMediaUploadFilterInstalled();
 		}
 	} else if ( hasUploadPermission ) {
@@ -1305,7 +1342,7 @@ function createEditorContainer( container, textarea, settings ) {
 	void ( async () => {
 		try {
 			emitLifecycle( 'before-load', { instance } );
-			await bbpressAdapter?.restoreDraftIfNeeded();
+			await runtimeAdapter?.onBeforeLoad?.();
 			if ( isUnmounted ) {
 				return;
 			}
@@ -1325,7 +1362,7 @@ function createEditorContainer( container, textarea, settings ) {
 		emitLifecycle( 'before-unmount', { instance } );
 		isUnmounted = true;
 
-		bbpressAdapter?.cleanup();
+		runtimeAdapter?.cleanup?.();
 		container?.removeEventListener?.( 'focusin', onFocusIn );
 		container?.removeEventListener?.( 'focusout', onFocusOut );
 		cleanupCallbacks.forEach( ( cleanup ) => cleanup() );
@@ -1427,6 +1464,7 @@ function normalizeTransformPatch( patch ) {
 
 	[
 		'allowEmbeds',
+		'blockVariations',
 		'blocks',
 		'chrome',
 		'className',
@@ -1440,6 +1478,7 @@ function normalizeTransformPatch( patch ) {
 		'modes',
 		'patterns',
 		'preferenceKey',
+		'runtimeAdapter',
 		'services',
 		'settingsTransforms',
 		'sidebar',

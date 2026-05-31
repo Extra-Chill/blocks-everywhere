@@ -380,6 +380,9 @@ abstract class Handler {
 					'allowPatterns'    => [],
 					'disallowPatterns' => [],
 				],
+				'blockVariations' => [
+					'disallow' => [],
+				],
 				'moreMenu' => false,
 				'sidebar' => [
 					'inserter' => false,
