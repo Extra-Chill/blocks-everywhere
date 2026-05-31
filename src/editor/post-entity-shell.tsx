@@ -15,6 +15,11 @@
  * When no `postEntity` is supplied — or the entity hasn't loaded yet — the
  * shell renders its children without the provider tree, preserving current
  * behavior for textarea-only mounts.
+ *
+ * Gutenberg portability boundary: the public `@wordpress/editor` autosave and
+ * editor-state stack is still post-entity-shaped. BE uses it when a canonical
+ * post exists, but keeps non-post surfaces on `@wordpress/block-editor` instead
+ * of fabricating post IDs or coupling hosts to private editor APIs.
  */
 
 /**
@@ -136,7 +141,8 @@ export default function PostEntityShell( {
 	children,
 }: PostEntityShellProps ): ReactElement {
 	if ( ! postEntity || ! postEntity.id || postEntity.id <= 0 ) {
-		// No canonical post — preserve existing behavior. No provider, no monitors.
+		// No canonical post: keep the mount post-agnostic. Gutenberg does not yet
+		// expose an equivalent autosave/editing provider for arbitrary host records.
 		return <>{ children }</>;
 	}
 

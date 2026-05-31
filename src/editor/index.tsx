@@ -7,8 +7,10 @@ import {
 	BlockContextProvider,
 	BlockEditorProvider,
 	mediaUpload as blockEditorMediaUpload,
-	// @ts-ignore __experimentalLibrary is an unstable API but is the only
-	// way to render the inline block inserter panel (same surface IBE used).
+	// Gutenberg portability gap: there is no stable, post-agnostic public
+	// library panel primitive yet. BE isolates the unstable export behind its
+	// own detached inserter contract so hosts never depend on this API shape.
+	// @ts-ignore __experimentalLibrary is unstable.
 	__experimentalLibrary as Library,
 } from '@wordpress/block-editor';
 import { mediaUpload as legacyMediaUpload } from '@wordpress/editor';
@@ -83,8 +85,9 @@ function ensureMediaUploadFilterInstalled() {
 		return;
 	}
 
-	// Gutenberg exposes editor.MediaUpload as a global hook, so install it once
-	// and leave it in place to avoid cross-editor unmount races.
+	// Gutenberg portability gap: `editor.MediaUpload` is a page-global hook, not
+	// an instance setting. Install BE's provider once and leave it in place so
+	// multiple embedded editors cannot race each other during unmount.
 	addFilter( 'editor.MediaUpload', 'blocks-everywhere/media-upload', () => MediaUpload );
 	isMediaUploadFilterInstalled = true;
 }
@@ -360,11 +363,10 @@ function MaybeEditorDataBoundary( { children, instance, settings, textarea } ) {
 /**
  * Inline block inserter panel rendered into the detached sidebar portal.
  *
- * Mirrors the surface IBE's `InserterSidebar` exposed via
- * `__experimentalLibrary`. We deliberately keep this minimal — no close
- * button, no tab filtering — because the BE detached sidebar is intended
- * for persistent host-owned slots (e.g. a host application sidebar). Tab
- * filtering can be reintroduced if/when a consumer needs it.
+ * Gutenberg portability gap: the reusable inserter library panel is still
+ * `__experimentalLibrary`. BE keeps the host-facing contract to "render an
+ * inserter panel in this sidebar" and contains the unstable Gutenberg export
+ * here so consumers do not couple to the upstream component directly.
  */
 function DetachedInserterPanel() {
 	return (
@@ -1047,8 +1049,10 @@ function getPageGlobalDisallowedBlockVariations( settings ) {
 	const configured = settings?.blocksEverywhere?.blockVariations?.disallow;
 	const variations = Array.isArray( configured ) ? [ ...configured ] : [];
 
-	// Back-compat: bbPress needs these Stretchy-only variations removed anywhere
-	// on the page because Gutenberg block variations are registered globally.
+	// Gutenberg portability gap: block variations are registered page-globally,
+	// so there is no per-editor way to hide a variation. BE makes that limitation
+	// explicit through `blocksEverywhere.blockVariations.disallow` and performs
+	// the one-way unregister at the page boundary.
 	if ( settings?.editorType === 'bbpress' || getBootstrapSettingsSummary().hasBbpressEditor ) {
 		variations.push(
 			{ blockName: 'core/paragraph', variationName: 'stretchy-paragraph' },
@@ -1240,8 +1244,9 @@ function createEditorContainer( container, textarea, settings ) {
 		// then fire on the standard WordPress autosave path with no per-consumer
 		// debounce/in-flight/sendBeacon code required.
 		//
-		// When postEntity is absent or has no id, PostEntityShell is a pass-through
-		// — existing textarea-only behavior is preserved.
+		// Gutenberg portability boundary: real WP posts should use the public
+		// `@wordpress/editor` provider/autosave stack; textarea-only hosts stay on
+		// `@wordpress/block-editor` primitives and must not fake a post entity.
 		const postEntity: PostEntityRef | null =
 			settings?.postEntity && typeof settings.postEntity === 'object'
 				? {
@@ -1337,7 +1342,9 @@ function createEditorContainer( container, textarea, settings ) {
 			ensureMediaUploadFilterInstalled();
 		}
 	} else if ( hasUploadPermission ) {
-		// Prefer block-editor mediaUpload; fall back to legacy editor if absent.
+		// Gutenberg portability gap: media upload helpers have moved between
+		// packages across Gutenberg/Core versions. Prefer block-editor's helper and
+		// fall back to editor's legacy export while BE supports both surfaces.
 		const resolvedMediaUpload = blockEditorMediaUpload || legacyMediaUpload || null;
 		settings.editor.mediaUpload = resolvedMediaUpload;
 

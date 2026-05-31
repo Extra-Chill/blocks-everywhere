@@ -421,6 +421,10 @@ class Editor {
 			if ( function_exists( '_wp_get_iframed_editor_assets' ) ) {
 				$editor_settings['__unstableResolvedAssets'] = _wp_get_iframed_editor_assets();
 			} else {
+				// Gutenberg portability gap: older supported Core versions do not expose
+				// the iframe asset resolver BE needs for a portable canvas. Keep the
+				// fallback local to BE so the editor contract remains stable while Core's
+				// private resolver catches up to a public, portable primitive.
 				$editor_settings['__unstableResolvedAssets'] = $this->wp_get_iframed_editor_assets();
 			}
 		} finally {
@@ -501,6 +505,9 @@ class Editor {
 
 	/**
 	 * Fallback iframe asset resolver for older WordPress.
+	 *
+	 * Mirrors the Core resolver closely enough for BE's iframed block canvas, but
+	 * remains a compatibility boundary rather than a new public extension point.
 	 *
 	 * @return array{styles:string,scripts:string}
 	 */

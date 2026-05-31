@@ -13,12 +13,17 @@ import type { ReactNode } from 'react';
 /**
  * Name of the Popover slot mounted inside the detached sidebar portal.
  *
+ * Gutenberg portability gap: popovers need an explicit slot provider when BE
+ * renders editor chrome outside the editor stacking context, but the slot-name
+ * provider is still `Popover.__unstableSlotNameProvider`. BE contains that
+ * unstable Gutenberg detail here and exposes only the generic detached-sidebar
+ * contract to hosts.
+ *
  * Popovers rendered inside the detached subtree (e.g. the inserter preview)
- * are scoped to this slot via Popover.__unstableSlotNameProvider so they
- * render in the same stacking context as their anchors, instead of falling
- * back to the default Popover.Slot inside `.blocks-everywhere-editor`
- * (which is isolated via `isolation: isolate` and therefore paints behind
- * the editor canvas when the anchor lives outside it).
+ * are scoped to this slot so they render in the same stacking context as their
+ * anchors, instead of falling back to the default Popover.Slot inside
+ * `.blocks-everywhere-editor` (which is isolated via `isolation: isolate` and
+ * therefore paints behind the editor canvas when the anchor lives outside it).
  *
  * Comment ported verbatim from isolated-block-editor's DetachedSidebar.
  * The `isolation: isolate` constraint is load-bearing: the editor shell
@@ -95,7 +100,7 @@ export default function DetachedSidebar( { target, className, children }: Detach
 	}
 
 	return createPortal(
-		// @ts-ignore Popover.__unstableSlotNameProvider is an experimental API
+		// @ts-ignore Popover.__unstableSlotNameProvider is unstable.
 		<Popover.__unstableSlotNameProvider value={ DETACHED_POPOVER_SLOT_NAME }>
 			<div className={ sidebarClassName }>
 				{ children }
