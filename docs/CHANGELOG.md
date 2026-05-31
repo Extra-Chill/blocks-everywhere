@@ -2,6 +2,11 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.3.1] - 2026-05-30
+
+### Changed
+- Internal improvements
+
 ## [3.3.0] - 2026-05-30
 
 ### Added
