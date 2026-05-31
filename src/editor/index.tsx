@@ -913,9 +913,18 @@ function resolveChromeConfig( raw: Partial< ResolvedChromeConfig > | undefined )
 	const mode = [ 'inline', 'full-height', 'modal', 'compact' ].includes( String( raw?.mode ) )
 		? ( raw?.mode as ResolvedChromeConfig[ 'mode' ] )
 		: 'inline';
+	const fullscreen = raw?.fullscreen;
+	const fullscreenConfig = typeof fullscreen === 'object' && fullscreen !== null ? fullscreen : {};
+	const fullscreenEnabled = fullscreen === true || fullscreenConfig?.enabled === true;
 
 	return {
 		mode,
+		fullscreen: {
+			active: typeof fullscreenConfig?.active === 'boolean' ? fullscreenConfig.active : undefined,
+			defaultActive: fullscreenConfig?.defaultActive === true,
+			enabled: fullscreenEnabled,
+			onChange: typeof fullscreenConfig?.onChange === 'function' ? fullscreenConfig.onChange : undefined,
+		},
 		topBar: raw?.topBar === true,
 		toolbar: raw?.toolbar !== false,
 		secondaryToolbar: raw?.secondaryToolbar === true,

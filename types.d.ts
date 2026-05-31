@@ -229,6 +229,15 @@ declare interface BlocksEverywhereHostAdapter {
 declare interface Chrome {
 	/** Layout mode class applied to the editor shell. Default: inline. */
 	mode?: string;
+	/** Enables the built-in fullscreen toggle. */
+	fullscreen?:
+		| boolean
+		| {
+				active?: boolean;
+				defaultActive?: boolean;
+				enabled?: boolean;
+				onChange?: ( active: boolean ) => void;
+		  };
 	/** Host-owned bar above the primary toolbar. Default: false. */
 	topBar?: boolean;
 	/** Primary toolbar row. Default: true. */

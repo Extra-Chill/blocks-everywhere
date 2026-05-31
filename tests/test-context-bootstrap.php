@@ -55,6 +55,7 @@ class Context_Bootstrap_Test extends TestCase {
 						[ 'blockName' => 'core/paragraph', 'variationName' => 'portable/paragraph' ],
 					],
 					'features'              => [ 'portableToolbar' => true ],
+					'chrome'                => [ 'fullscreen' => true ],
 					'entity_bridge'         => [
 						'entity'       => [
 							'type'         => 'comment',
@@ -125,6 +126,7 @@ class Context_Bootstrap_Test extends TestCase {
 			$settings['blocksEverywhere']['blockVariations']['disallow']
 		);
 		$this->assertTrue( $settings['blocksEverywhere']['features']['portableToolbar'] );
+		$this->assertTrue( $settings['blocksEverywhere']['chrome']['fullscreen'] );
 		$this->assertSame( 7, $settings['blocksEverywhere']['entityBridge']['parentId'] );
 		$this->assertSame( 'abc123', $settings['blocksEverywhere']['entityBridge']['revision'] );
 		$this->assertSame( 'comment', $settings['blocksEverywhere']['entityBridge']['entity']['type'] );
