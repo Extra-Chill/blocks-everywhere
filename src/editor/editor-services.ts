@@ -32,10 +32,29 @@ export type EditorPermissionsService = {
 	canUploadMedia?: boolean | ( ( context: EditorServiceContext ) => boolean | undefined );
 } | null;
 
+export type EditorAutocompleteCompleter = Record< string, unknown >;
+
+export type EditorAutocompleteService =
+	| ( (
+			completers: EditorAutocompleteCompleter[],
+			context: EditorServiceContext
+	  ) => EditorAutocompleteCompleter[] | void )
+	| {
+			completers?:
+				| EditorAutocompleteCompleter[]
+				| ( ( context: EditorServiceContext ) => EditorAutocompleteCompleter[] | void );
+			filterCompleters?: (
+				completers: EditorAutocompleteCompleter[],
+				context: EditorServiceContext
+			) => EditorAutocompleteCompleter[] | void;
+	  }
+	| null;
+
 export interface EditorServices {
 	apiFetch?: ( options: Record< string, unknown > ) => Promise< unknown >;
 	apiFetchMiddleware?: ( options: Record< string, unknown >, next: Function ) => unknown;
 	apiFetchMiddlewares?: Array< ( options: Record< string, unknown >, next: Function ) => unknown >;
+	autocomplete?: EditorAutocompleteService;
 	autosave?: EditorAutosaveService;
 	fetchLinkSuggestions?: ( search: string, searchOptions?: Record< string, unknown > ) => Promise< unknown >;
 	mediaUpload?: Function | null;
@@ -48,5 +67,6 @@ export interface EditorHostRuntimeAdapter {
 	installHandlers?: () => void;
 	onBeforeLoad?: () => Promise< void > | void;
 	onContent?: ( blocks: object[], serialized: string, source: 'input' | 'change' | string ) => void;
+	resolveAutocomplete?: ( context: EditorServiceContext ) => EditorAutocompleteService | undefined;
 	resolveMediaUpload?: ( context: EditorServiceContext & { canUploadMedia: boolean } ) => Function | null | undefined;
 }

@@ -401,9 +401,10 @@ Useful services include:
 -   `apiFetch`: authenticated host requests.
 -   `mediaUpload`: upload, select, or validate media through Gutenberg's media upload contract.
 -   `autosave`: save draft content without submitting the host form.
--   `mentions`: resolve autocomplete suggestions.
--   `notify`: show success, warning, and error notices.
--   `telemetry`: record editor lifecycle and performance events.
+-   `autocomplete`: add or filter Gutenberg completers.
+-   `fetchLinkSuggestions`: resolve link autocomplete suggestions.
+-   `notices`: show success, warning, error, and info notices.
+-   `permissions`: answer editor capability checks.
 
 Inject services through `settings.blocksEverywhere.services`, `settings.blocksEverywhere.servicesByMode`, or the second argument to `window.blocksEverywhere.mountEditor()`. `servicesByMode` keys match selected semantic editor modes from `blocksEverywhere.mode` or `mountEditor( textarea, { mode } )`; they do not resolve against chrome layout mode. Services merge in order: base services, each selected semantic mode in order, then mount-level services. Passing `null` for a service disables the corresponding default where the editor owns that behavior.
 
@@ -412,6 +413,17 @@ const mount = window.blocksEverywhere.mountEditor( textarea, {
 	services: {
 		mediaUpload: ( uploadOptions ) => hostUploadMedia( uploadOptions ),
 		fetchLinkSuggestions: ( search, options ) => hostSuggestLinks( search, options ),
+		autocomplete: {
+			completers: [
+				{
+					name: 'project-members',
+					triggerPrefix: '@',
+					options: ( search ) => hostSuggestMembers( search ),
+					getOptionLabel: ( member ) => member.name,
+					getOptionCompletion: ( member ) => `@${ member.slug }`,
+				},
+			],
+		},
 		autosave: {
 			delay: 1200,
 			save: ( payload, context ) => hostSaveDraft( context.textarea, payload.content ),
@@ -448,6 +460,8 @@ window.blocksEverywhere.mountEditor( textarea, {
 ```
 
 For BE-owned REST calls, `apiFetchMiddleware` and `apiFetchMiddlewares` compose into a per-instance API client instead of registering global `apiFetch.use()` middleware. WordPress package internals may still use the package-level client, so prefer explicit `mediaUpload`, `fetchLinkSuggestions`, and `autosave` services when a behavior must differ between editor instances.
+
+Gutenberg ships default global completers, including the `@` user completer. BE's `autocomplete` service integrates with Gutenberg's `editor.Autocomplete.completers` hook instead of replacing it. The upstream completer registry is still page-global, so BE registers active host completers globally while each editor is mounted and cleans them up on unmount. Use `filterCompleters( completers, context )` when a host must remove or reorder Gutenberg defaults for an embedded surface.
 
 ### Lifecycle Events
 
