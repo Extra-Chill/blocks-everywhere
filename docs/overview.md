@@ -33,29 +33,35 @@ Blocks Everywhere is a WordPress plugin that extends the Gutenberg block editor 
 ### Core Components
 
 1. **Editor Class** (`classes/class-editor.php`)
-   - Loads Gutenberg assets and configuration
-   - Manages editor initialization
-   - Configures editor settings and permissions
+   - Loads Gutenberg assets and configuration.
+   - Manages editor initialization.
+   - Configures editor settings and permissions.
 
-2. **Handler System** (`classes/class-handler.php`)
-   - Base handler class for all platform implementations
-   - Provides common functionality for block processing
-   - Manages content rendering with blocks
+2. **Shared Handler Infrastructure** (`classes/class-handler.php`)
+   - Registers shared assets.
+   - Wraps textarea output for editor replacement.
+   - Provides block rendering and allowed-block helpers.
+   - Supports the context engine; new platforms should not add handler subclasses.
 
-3. **Platform Handlers** (`classes/handlers/`)
-   - **bbPress Handler** - Integrates blocks into forum content
-   - **Comments Handler** - Enables blocks in WordPress comments
-   - **BuddyPress Handler** - Provides BuddyPress integration
+3. **Context Engine** (`classes/class-engine.php`)
+   - Replaces the old platform-specific handler subclass model.
+   - Registers editor surfaces through the `blocks_everywhere_contexts` filter.
+   - Applies context-specific settings, assets, preload paths, block categories, body classes, and admin hooks.
 
-### Isolated Block Editor Dependency
+4. **Embedded Editor Runtime** (`src/editor/`)
+   - Composes Gutenberg packages directly.
+   - Provides content bridges, entity bridges, lifecycle callbacks, services, slot fills, chrome settings, and optional runtime adapters.
+   - Includes a bundled bbPress runtime adapter for bbPress-specific browser behavior.
 
-Blocks Everywhere uses the [Isolated Block Editor](https://github.com/Automattic/isolated-block-editor/) - a standalone implementation of the Gutenberg editor that can be embedded anywhere on a page without the full WordPress editor UI.
+### Gutenberg Runtime
+
+Blocks Everywhere composes an embedded editor from WordPress Gutenberg packages rather than requiring the full WordPress admin editor screen.
 
 **Key Benefits:**
-- Self-contained editor instance
-- Style isolation from page content
-- Flexible API for integration
-- No dependency on WordPress admin pages
+- Self-contained editor instances.
+- Direct use of Gutenberg block editor primitives.
+- Per-instance adapter boundaries for host persistence and services.
+- No dependency on WordPress admin pages for frontend editor surfaces.
 
 ## Technology Stack
 
@@ -65,7 +71,7 @@ Blocks Everywhere uses the [Isolated Block Editor](https://github.com/Automattic
 - **Minimum PHP**: 7.4+
 - **WordPress Minimum**: 5.0+
 - **Development Dependencies**: PHPUnit, PHP_CodeSniffer
-- **Key Libraries**: Isolated Block Editor
+- **Key Libraries**: WordPress Gutenberg packages
 
 ### Frontend (JavaScript/React)
 
@@ -111,7 +117,7 @@ The plugin allows any block that complies with WordPress KSES (HTML sanitization
 
 1. WordPress allowed HTML tags (via `wp_kses_post()`)
 2. Editor settings filter: `blocks_everywhere_editor_settings`
-3. Isolated Block Editor configuration
+3. Blocks Everywhere editor settings and Gutenberg configuration
 
 ### Custom Blocks
 
@@ -144,7 +150,7 @@ With `BLOCKS_EVERYWHERE_EMAIL` enabled, blocks are converted to HTML-safe format
 
 ### Style Isolation Strategy
 
-The Isolated Block Editor is placed directly on the page alongside page content. This approach means:
+The embedded Gutenberg editor is placed directly on the page alongside page content. This approach means:
 
 **Benefits:**
 - Preview matches final appearance
@@ -159,7 +165,7 @@ The Isolated Block Editor is placed directly on the page alongside page content.
 Blocks Everywhere includes modular CSS files for platform-specific styling:
 
 - `styles/editor.scss` - Editor base styles
-- `styles/bbpress.scss` - BBPress-specific styles  
+- `styles/bbpress.scss` - BBPress-specific styles
 - `styles/comments.scss` - Comments-specific styles
 - `styles/buddypress.scss` - BuddyPress-specific styles
 - `styles/theme-compat.scss` - Theme compatibility overrides
@@ -191,7 +197,7 @@ Better approach: Modify theme to be more specific in selectors rather than relyi
 ### Capability Checks
 
 - Comments: Requires `edit_posts` capability
-- BBPress: Topic/reply authors or users with `moderate` capability  
+- BBPress: Topic/reply authors or users with `moderate` capability
 - Admin: Requires `manage_options` capability (customizable)
 
 ## Development & Build System
@@ -241,8 +247,8 @@ The plugin includes:
 
 ## Related Documentation
 
-- [Architecture Details](architecture.md) - Class hierarchy and design patterns
-- [Handler System](handlers/) - Platform-specific implementation guides
+- [Architecture Details](architecture.md) - Runtime architecture and context engine
+- [Integration Guides](handlers/) - Platform-specific implementation guides
 - [Components Guide](components.md) - React/TypeScript component organization
 - [Portable Editor Adapter Guide](portable-editor-adapters.md) - Generic host adapter migration guide for embedded editor shells
 - [Build & Development](build-and-development.md) - Development workflow
@@ -250,6 +256,6 @@ The plugin includes:
 
 ---
 
-**See Also**: 
-- [Isolated Block Editor](https://github.com/Automattic/isolated-block-editor) - Core dependency
+**See Also**:
+- [WordPress Block Editor Handbook](https://developer.wordpress.org/block-editor/) - Gutenberg package and block editor reference
 - [WordPress.org Plugin Page](https://wordpress.org/plugins/blocks-everywhere/)

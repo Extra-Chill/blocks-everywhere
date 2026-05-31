@@ -1,458 +1,247 @@
-# BBPress Handler - Integration Guide
+# bbPress Integration Guide
 
 ## Overview
 
-The BBPress handler integrates the Gutenberg block editor into bbPress forums, enabling forum participants to use rich block editing for topics, replies, and forum content.
+The bbPress integration embeds Gutenberg into forum topic and reply surfaces. It is implemented with the shared Blocks Everywhere context engine plus a bundled client runtime adapter for bbPress-specific draft, media, reply-switching, and submit behavior.
 
-**Status**: Good (fully supported)  
+**Status**: Good, fully supported<br>
 **Minimum bbPress**: 2.6+
 
-## File Location
+## Implementation Files
 
-`classes/handlers/class-bbpress.php`
+- Server context and shared editor loading: `classes/class-engine.php`, `classes/class-handler.php`, `classes/class-editor.php`
+- Client runtime adapter: `src/editor/bbpress-adapter.ts`
+- Generic editor runtime: `src/editor/index.tsx`
+- Forum styles: `src/styles/bbpress.scss`
 
-**Namespace**: `Automattic\Blocks_Everywhere\Handler`  
-**Class**: `bbPress extends Handler`
+The old `classes/handlers/class-bbpress.php` subclass model has been replaced by the data-driven `blocks_everywhere_contexts` API.
 
 ## Integration Points
 
-### Frontend (User-Facing)
+### Frontend Forum Pages
 
-The handler integrates blocks at these user interaction points:
+When a user visits a forum, topic, or reply page, the bbPress context decides whether an embedded editor should load for the available topic/reply form. Blocks Everywhere then:
 
-#### Forum Pages
+- Loads the shared editor assets.
+- Wraps the target textarea with the embedded editor container.
+- Applies bbPress-aware block settings and allowed blocks.
+- Selects the bundled bbPress runtime adapter when `editorType` is `bbpress`.
 
-When a user visits forum pages, the handler:
+### Topic Creation And Editing
 
-1. Hooks to `bbp_template_redirect` action
-2. Checks if current page is a forum, topic, or reply page
-3. Determines if user should see the editor
-4. Loads editor JavaScript and configuration if appropriate
+- User opens a new topic or edit-topic form.
+- Blocks Everywhere mounts the Gutenberg editor on the bbPress textarea.
+- The editor serializes blocks back to the textarea or content bridge.
+- bbPress saves the submitted serialized block content.
 
-#### Topic Creation & Editing
+### Reply Creation And Editing
 
-- User clicks "New Topic" button
-- Editor loads on the topic form
-- User edits with Gutenberg blocks
-- Form submission saves serialized blocks to database
+- User opens a reply or edit-reply form.
+- The bbPress runtime adapter coordinates reply-specific draft restore, autosave, media upload resolution, and submit behavior.
+- The form saves serialized block markup for the reply content.
 
-#### Reply Creation & Editing
+### Admin Screens
 
-- User replies to existing topic
-- Editor loads on reply form  
-- User edits with blocks
-- Form saves reply with block content
-
-### Backend (Admin Screens)
-
-When `BLOCKS_EVERYWHERE_BBPRESS_ADMIN` is enabled:
-
-- Topic edit screen loads block editor
-- Reply edit screen loads block editor
-- Forum edit screen loads block editor
-- Admin can moderate content with full block support
+When bbPress admin editing is enabled, Blocks Everywhere can load the editor on topic, reply, and forum edit screens so moderators can work with block content in admin.
 
 ## Content Rendering
 
-When forum content is displayed, the handler processes blocks:
+Forum content is stored as serialized block markup and rendered through WordPress block rendering helpers.
 
-### Filter Chain
+Typical display flow:
 
 ```
-BBPress output (topic, reply, forum content)
+bbPress content output
     ↓
-Handler intercepts via filter:
-├─ bbp_get_forum_content
-├─ bbp_get_topic_content
-└─ bbp_get_reply_content
+Host/context filter receives topic, reply, or forum content
     ↓
-WordPress autoembed() processing
+WordPress autoembed processing where applicable
     ↓
-do_blocks() converts block markup to HTML
+parse_blocks() and render_block() render block markup
     ↓
-wp_kses_post() sanitizes HTML
+Host sanitization such as wp_kses_post() or bbPress KSES
     ↓
-Rendered HTML displayed on page
+Rendered HTML is displayed on the page
 ```
 
-### Specific Filters
+Common bbPress output filters include:
 
-**Forum Content** (`bbp_get_forum_content`):
-- Runs when forum description is output
-- Allows embeds before block processing
-- Sanitizes via KSES
-
-**Topic Content** (`bbp_get_topic_content`):
-- Runs when displaying topic content
-- First topic in a forum
-- Author's initial post
-
-**Reply Content** (`bbp_get_reply_content`):
-- Runs for each reply in forum
-- All responses to topics
-- Most frequently processed filter
+- `bbp_get_forum_content`
+- `bbp_get_topic_content`
+- `bbp_get_reply_content`
 
 ## Permissions
 
-### Frontend Permissions
+Frontend permissions remain bbPress-owned. Blocks Everywhere only mounts where the host/context says the current user can edit or compose.
 
-**Who Can Use the Editor**:
+Common cases:
 
-- **Topic Authors**: Can edit own topics (if editor enabled)
-- **Reply Authors**: Can edit own replies (if editor enabled)
-- **Moderators**: Can edit any content
-- **Administrators**: Full editing access
-- **Regular Users**: Can post new topics/replies if enabled
+- Topic authors can edit their own topics when bbPress allows it.
+- Reply authors can edit their own replies when bbPress allows it.
+- Moderators can edit forum content according to bbPress capabilities.
+- Administrators have full editing access.
+- Regular users can create topics/replies where forum permissions allow it.
 
-**How to Check Permission**:
+Example bbPress checks:
 
 ```php
-// Topic author
 if ( bbp_is_user_topic_author( $user_id, $topic_id ) ) {
-    // Can edit
+    // Topic author can edit when bbPress allows it.
 }
 
-// Moderator
 if ( bbp_user_can_edit_topic( $user_id, $topic_id ) ) {
-    // Can edit
+    // User can edit this topic.
 }
 
-// Admin
 if ( current_user_can( 'manage_options' ) ) {
-    // Can edit anything
+    // Site administrator.
 }
 ```
 
-### Admin Permissions
-
-**Admin Screen Access**:
-
-- Requires `manage_options` capability (configurable via `blocks_everywhere_admin_cap` filter)
-- Can edit any topic or reply
-- Full block support enabled
-- Moderation tools available
+Admin screen access is controlled by the configured admin capability, defaulting to `manage_options` and filterable with `blocks_everywhere_admin_cap`.
 
 ## Configuration
 
-### Enable BBPress Support
+### Enable bbPress Support
 
 ```php
-// wp-config.php
 define( 'BLOCKS_EVERYWHERE_BBPRESS', true );
-define( 'BLOCKS_EVERYWHERE_BBPRESS_ADMIN', true ); // Optional: admin editing
+define( 'BLOCKS_EVERYWHERE_BBPRESS_ADMIN', true );
 ```
 
 Or use filters:
 
 ```php
-// functions.php or plugin
 add_filter( 'blocks_everywhere_bbpress', '__return_true' );
 add_filter( 'blocks_everywhere_bbpress_admin', '__return_true' );
 ```
 
-### Editor Settings
+### Customize Editor Settings
 
-Customize what blocks are available in BBPress:
+Use `blocks_everywhere_editor_settings` for global editor settings or context settings for a specific surface.
 
 ```php
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-    // Restrict to basic blocks only
+add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
     $settings['blocksEverywhere']['blocks']['allowBlocks'] = [
         'core/paragraph',
         'core/heading',
         'core/list',
+        'core/list-item',
         'core/image',
         'core/quote',
     ];
-    
-    // Disable embeds in forum
+
     $settings['blocksEverywhere']['allowEmbeds'] = [];
-    
+
     return $settings;
 } );
 ```
 
-### Admin Capability
+### Register Or Override A Context
 
-Change who can edit via admin screens:
+Integrations can add or adjust contexts through `blocks_everywhere_contexts`.
 
 ```php
-// Only users with 'moderate_comments' can use admin editor
-add_filter( 'blocks_everywhere_admin_cap', function() {
-    return 'moderate_comments';
+add_filter( 'blocks_everywhere_contexts', function ( $contexts ) {
+    $contexts['custom-bbpress-reply'] = [
+        'type'      => 'bbpress',
+        'textarea'  => '#bbp_reply_content',
+        'container' => '.bbp-the-content-wrapper',
+        'trigger'   => 'bbp_template_redirect',
+        'condition' => function () {
+            return function_exists( 'bbp_current_user_can_access_create_reply_form' )
+                && bbp_current_user_can_access_create_reply_form();
+        },
+    ];
+
+    return $contexts;
 } );
 ```
 
 ## Block Support
 
-### Allowed Blocks
+bbPress allows blocks that survive the forum KSES policy. The default allowed block list is derived from bbPress allowed tags when bbPress exposes them.
 
-BBPress allows any block that complies with WordPress KSES. By default, these blocks work well:
+Recommended blocks:
 
-**Recommended Blocks**:
+- `core/paragraph`
+- `core/heading`
+- `core/list`
+- `core/list-item`
+- `core/quote`
+- `core/image`
+- `core/audio`
+- `core/video`
+- `core/embed`
+- `core/code`
+- `core/table`
 
-- `core/paragraph` - Text content
-- `core/heading` - Topic/reply titles
-- `core/list` - Ordered/unordered lists
-- `core/quote` - Block quotes
-- `core/image` - Media insertion
-- `core/audio` - Audio content
-- `core/video` - Video content
-- `core/embed` - YouTube, Twitter, etc.
-- `core/code` - Code snippets
-- `core/table` - Data tables
+Blocks with layout sensitivity:
 
-**Blocks with Limitations**:
+- `core/media-text` can exceed narrow forum layouts.
+- `core/columns` can be awkward in narrow topic/reply widths.
+- `core/gallery` works for image collections but depends on theme styles.
 
-- `core/media-text` - Works but may affect layout
-- `core/columns` - Layout may not work in forum width
-- `core/gallery` - Works well for image collections
-
-### Disallowing Blocks
+Restrict blocks with editor settings:
 
 ```php
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-    // Remove embeds and galleries from BBPress
-    $settings['blocksEverywhere']['blocks']['allowBlocks'] = array_diff(
-        $settings['blocksEverywhere']['blocks']['allowBlocks'],
-        [ 'core/embed', 'core/gallery' ]
+add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
+    $settings['blocksEverywhere']['blocks']['allowBlocks'] = array_values(
+        array_diff(
+            $settings['blocksEverywhere']['blocks']['allowBlocks'] ?? [],
+            [ 'core/embed', 'core/gallery' ]
+        )
     );
-    
+
     return $settings;
 } );
 ```
 
-## Storage & Processing
+## Client Runtime Adapter
 
-### Database Storage
+The bundled bbPress runtime adapter lives in `src/editor/bbpress-adapter.ts`. It is selected by the generic runtime for bbPress editor instances and handles bbPress-specific browser behavior behind the generic `runtimeAdapter` boundary.
 
-Forum content is stored as serialized Gutenberg blocks:
+Adapter responsibilities include:
 
-```
-<!-- wp:paragraph -->
-<p>Topic content with blocks</p>
-<!-- /wp:paragraph -->
+- Preparing editor state before load.
+- Restoring and saving reply drafts.
+- Reacting to content changes for autosave or host UI state.
+- Resolving media upload behavior for bbPress forms.
+- Installing submit and reply-switch handlers.
+- Cleaning up listeners when the editor unmounts.
 
-<!-- wp:image {"id":123} -->
-<figure class="wp-block-image"><img src="..." /></figure>
-<!-- /wp:image -->
-```
+Use the generic adapter surfaces for new behavior where possible:
 
-### Block Detection
-
-The handler detects if content has blocks:
-
-```php
-if ( has_blocks( $topic_content ) ) {
-    // Content contains Gutenberg blocks
-    $content = do_blocks( $topic_content );
-}
-```
-
-### Empty Block Handling
-
-If blocks are present but empty:
-
-1. `do_blocks()` processes them
-2. May result in empty HTML
-3. Sanitization removes invalid tags
-4. Final output may be empty string
-
-## Theme Compatibility Issues
-
-### Common Problems
-
-**Issue 1: Editor styles conflict with theme**
-- Solution: Use `BLOCKS_EVERYWHERE_THEME_COMPAT` mode
-- Better: Make theme selectors more specific
-
-**Issue 2: Forum layout breaks with blocks**
-- Solution: Use responsive block settings
-- Better: Design theme to accommodate wide blocks
-
-**Issue 3: Block styling doesn't match forum**
-- Solution: Add custom CSS via filter
-- Better: Use theme colors in blocks
-
-### Adding Custom CSS
-
-```php
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-    $settings['blocksEverywhere']['className'] = 'bbpress-editor-custom';
-    return $settings;
-} );
-```
-
-Then style in theme:
-
-```css
-.bbpress-editor-custom .wp-block-image {
-    max-width: 100%;
-    height: auto;
-}
-```
-
-## Email Processing
-
-If `BLOCKS_EVERYWHERE_EMAIL` is enabled:
-
-- Forum notifications include block content
-- Blocks converted to plain HTML (email-safe)
-- Links preserved
-- Images included as references
-
-## Known Limitations
-
-### Current Limitations
-
-1. **Quote Formatting**: Reply quoting may not preserve block structure
-2. **Media Management**: Large uploads may slow forum performance
-3. **Nested Topics**: Very nested threads have editor loading delays
-4. **Theme Styles**: Aggressive forum CSS may override block styles
-
-### Future Improvements
-
-- Optimized media handling for forums
-- Better quote support for blocks
-- Improved performance for large discussions
-- Enhanced style isolation
-
-## Testing Checklist
-
-### Frontend Testing
-
-- [ ] Topic creation with blocks
-- [ ] Reply creation with blocks  
-- [ ] Topic editing preserves blocks
-- [ ] Reply editing preserves blocks
-- [ ] Block content displays correctly
-- [ ] Multiple blocks in single topic
-- [ ] Media insertion works
-- [ ] Embeds render properly
-- [ ] Nested replies show blocks
-- [ ] Mobile editor responsiveness
-
-### Admin Testing
-
-- [ ] Topic admin edit screen
-- [ ] Reply admin edit screen
-- [ ] Bulk editing operations
-- [ ] Permissions enforced
-- [ ] Capability restrictions work
-
-### Compatibility Testing
-
-- [ ] Different themes (Genesis, Elementor, etc.)
-- [ ] bbPress with BuddyPress
-- [ ] Forum notifications with blocks
-- [ ] Search includes block content
-- [ ] Permalinks work correctly
-
-## Integration with Other Plugins
-
-### BuddyPress Integration
-
-When both Blocks Everywhere and BuddyPress are active:
-
-- Private forums inherit block support
-- Activity stream separate from forums
-- Mentions work in block content
-
-### WooCommerce Integration
-
-E-commerce forums can use blocks for product discussions.
-
-### Custom Plugins
-
-To integrate custom plugins with BBPress blocks:
-
-1. Hook to `blocks_everywhere_editor_settings`
-2. Add custom blocks to allowed list
-3. Implement custom rendering
+- `contentBridge` for content persistence.
+- `entityBridge` for host record identity and edit state.
+- `services` for callable host capabilities.
+- `lifecycle` for instance events.
+- `runtimeAdapter` only for low-level runtime behavior.
 
 ## Troubleshooting
 
-### Editor Not Appearing
+### Editor Does Not Load
 
-**Check**:
-- Is `blocks_everywhere_bbpress` filter returning true?
-- Is bbPress 2.6+ installed?
-- Are blocks enabled in theme?
+- Confirm `BLOCKS_EVERYWHERE_BBPRESS` or `blocks_everywhere_bbpress` is enabled.
+- Confirm bbPress is active and the current page has the expected topic/reply form.
+- Check browser console errors.
+- Check that the target textarea selector exists.
+- Confirm current user permissions allow topic/reply creation or editing.
 
-**Solution**:
-```php
-// Debug: Check if filter is enabled
-if ( apply_filters( 'blocks_everywhere_bbpress', true ) ) {
-    // Should work
-}
-```
+### Blocks Are Removed On Save
 
-### Blocks Not Rendering
+- Check bbPress KSES allowed tags.
+- Check `blocks_everywhere_allowed_blocks` and `blocksEverywhere.blocks.allowBlocks`.
+- Confirm the block's rendered HTML is allowed by the forum sanitization policy.
 
-**Check**:
-- Is content being saved as blocks?
-- Are KSES rules blocking tags?
-- Is `do_blocks()` being called?
+### Media Uploads Fail
 
-**Solution**:
-```php
-// Check if do_blocks is called
-error_log( 'Content: ' . $content );
-$rendered = do_blocks( $content );
-error_log( 'Rendered: ' . $rendered );
-```
+- Confirm the current user can upload files.
+- Check WordPress media permissions and nonce data.
+- Confirm the bbPress runtime adapter is active for the editor instance.
 
-### Style Conflicts
+## Related Documentation
 
-**Check**:
-- Is theme CSS overriding block styles?
-- Are editor styles loaded?
-- Is BLOCKS_EVERYWHERE_THEME_COMPAT enabled?
-
-**Solution**:
-```php
-// Enable compatibility mode
-define( 'BLOCKS_EVERYWHERE_THEME_COMPAT', true );
-
-// Or add specific CSS
-add_filter( 'wp_enqueue_scripts', function() {
-    wp_enqueue_style( 'my-bbpress-compat', get_template_directory_uri() . '/bbpress-compat.css' );
-} );
-```
-
-## Development Example
-
-### Creating a Custom Scenario
-
-```php
-// Enable BBPress support
-add_filter( 'blocks_everywhere_bbpress', '__return_true' );
-
-// Customize editor for forum
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-    // Only allow specific blocks
-    $settings['blocksEverywhere']['blocks']['allowBlocks'] = [
-        'core/paragraph',
-        'core/image',
-        'core/quote',
-    ];
-    
-    // Add custom class
-    $settings['blocksEverywhere']['className'] = 'my-forum-editor';
-    
-    return $settings;
-} );
-
-// Add custom CSS
-add_action( 'wp_enqueue_scripts', function() {
-    wp_enqueue_style( 'my-forum-editor', get_template_directory_uri() . '/forum-editor.css' );
-} );
-```
-
----
-
-**See Also**:
-- [Architecture Overview](../architecture.md)
-- [Handler Base Class](../architecture.md#handler-base-class)
-- [Comments Handler](comments-handler.md)
-- [BuddyPress Handler](buddypress-handler.md)
+- [Architecture](../architecture.md)
+- [Portable Editor Adapter Guide](../portable-editor-adapters.md)
+- [Components Guide](../components.md)

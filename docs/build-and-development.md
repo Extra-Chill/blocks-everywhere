@@ -247,11 +247,8 @@ blocks-everywhere/
 │
 ├── classes/                      (PHP code - MODIFY)
 │   ├── class-editor.php
-│   ├── class-handler.php
-│   └── handlers/
-│       ├── class-bbpress.php
-│       ├── class-comments.php
-│       └── class-buddypress.php
+│   ├── class-engine.php
+│   └── class-handler.php
 │
 ├── tests/                        (Tests - MODIFY)
 │   ├── test-bbpress-content.php

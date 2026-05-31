@@ -1,468 +1,250 @@
 # Blocks Everywhere - Architecture
 
-## Class Hierarchy
+Blocks Everywhere provides a Gutenberg-powered editor runtime for surfaces outside the canonical WordPress post editor. The current architecture is context-driven: host integrations register context configuration, Blocks Everywhere loads the shared editor runtime, and optional client adapters connect host persistence and product behavior to the embedded editor.
 
-Blocks Everywhere uses an object-oriented architecture with inheritance-based handler system:
+## Runtime Shape
 
 ```
-Automattic\Blocks_Everywhere\
-├── Editor                        (Asset & configuration management)
-├── Handler                       (Base handler class)
-│   └── Handler\*                (Platform-specific handlers)
-│       ├── bbPress              (extends Handler)
-│       ├── Comments             (extends Handler)
-│       └── BuddyPress           (extends Handler)
+Host app
+    owns routes, permissions, persistence, and product UI
+        |
+        v
+Server context
+    registers textarea, trigger hook, settings, assets, and render filters
+        |
+        v
+Blocks Everywhere runtime
+    loads Gutenberg packages, editor assets, chrome, block settings, and serialization
+        |
+        v
+Client adapters
+    connect content, entity state, services, lifecycle, and low-level runtime hooks
 ```
 
 ## Core Classes
 
-### Editor Class
+### `Editor`
 
-**File**: `classes/class-editor.php`  
-**Namespace**: `Automattic\Blocks_Everywhere`
+**File**: `classes/class-editor.php`
 
-Manages the loading and configuration of Gutenberg editor assets across all platforms.
+The `Editor` class owns Gutenberg asset and settings bootstrapping for embedded editor instances.
 
-#### Responsibilities
+Responsibilities:
 
-- Load editor JavaScript and CSS assets
-- Configure editor settings via `block_editor_settings_all` filter
-- Initialize media upload capabilities
-- Apply theme compatibility styles
-- Set up editor environment (screen context, script dependencies)
+- Load editor JavaScript and CSS assets.
+- Configure block editor settings through `block_editor_settings_all` and `blocks_everywhere_editor_settings`.
+- Prepare media upload support when the current user can upload files.
+- Provide iframe canvas assets and editor-style compatibility where WordPress does not expose a direct public primitive.
+- Apply theme compatibility and block editor environment setup.
 
-#### Key Methods
+### `Handler\Handler`
 
-- `__construct()` - Hooks into WordPress for asset loading
-- `setup_media()` - Enables media uploads in editor
-- `block_editor_settings_all( $settings )` - Modifies editor configuration
-- `wp_theme_json_data_theme( $json )` - Provides theme.json configuration
+**File**: `classes/class-handler.php`
 
-#### Editor Settings Configuration
+The base handler is now shared infrastructure, not the extension model for new platforms. It provides common asset registration, editor wrapping, block rendering, allowed-block helpers, and editor loading methods used by the data-driven engine.
 
-The Editor class provides:
+Use `blocks_everywhere_contexts` for new integrations instead of adding `Handler\*` subclasses.
 
-1. **Block Filtering**: Determines which blocks are available based on KSES rules
-2. **Allow Embeds**: Configures embed support
-3. **Asset Management**: Script and style loading based on context
-4. **Media Support**: File upload permissions and restrictions
+### `Engine`
 
-### Handler Base Class
+**File**: `classes/class-engine.php`
 
-**File**: `classes/class-handler.php`  
-**Namespace**: `Automattic\Blocks_Everywhere`
+The `Engine` class is the server-side context manager. It replaces the old per-platform subclass pattern with configuration arrays registered through the `blocks_everywhere_contexts` filter.
 
-Abstract base class defining the interface and shared functionality for all platform handlers.
+Responsibilities:
 
-#### Responsibilities
+- Collect context definitions.
+- Wire trigger hooks that decide when an editor should load.
+- Apply context-specific editor settings.
+- Attach preload paths, block categories, body classes, and server-side block settings.
+- Load editor assets for each active context.
+- Support admin contexts through `admin_hook`.
 
-- Provide common block processing (`do_blocks()` functionality)
-- Manage content parsing and rendering
-- Handle HTML sanitization via KSES
-- Define handler interface for subclasses
-- Manage editor initialization and configuration
+Context registrations can provide values such as:
 
-#### Key Methods
+```php
+add_filter( 'blocks_everywhere_contexts', function ( $contexts ) {
+    $contexts['reply-composer'] = [
+        'type'       => 'reply',
+        'textarea'   => '#reply-content',
+        'container'  => '.reply-editor',
+        'trigger'    => 'wp',
+        'condition'  => function () {
+            return is_user_logged_in();
+        },
+        'mode'       => 'compact',
+        'patterns'   => [
+            [
+                'name'    => 'host/reply-template',
+                'title'   => 'Reply template',
+                'content' => '<!-- wp:paragraph --><p>Thanks for the report.</p><!-- /wp:paragraph -->',
+            ],
+        ],
+        'entity_bridge' => [
+            'entity' => [
+                'type' => 'reply',
+                'id'   => get_the_ID(),
+            ],
+        ],
+    ];
 
-- `enable_editor()` - Registers hooks to load editor on current page
-- `do_blocks( $content, $context )` - Process blocks in content
-- `should_load_editor()` - Determine if editor should load on page
-- `render_blocks( $content )` - Render block markup
-- `get_editor_settings()` - Return editor configuration
-
-#### Block Processing Flow
-
+    return $contexts;
+} );
 ```
-Content with serialized blocks
-    ↓
-parse_blocks() - Parse block structure
-    ↓
-render_block() - Render each block
-    ↓
-wp_kses_post() - Sanitize HTML
-    ↓
-Return rendered content
-```
 
-### bbPress Handler
+## Client Adapter Boundaries
 
-**File**: `classes/handlers/class-bbpress.php`  
-**Namespace**: `Automattic\Blocks_Everywhere\Handler`  
-**Class**: `bbPress extends Handler`
+The embedded editor receives settings under `blocksEverywhere`. Host integrations should choose the narrowest surface that fits the behavior:
 
-Integrates Gutenberg editor into bbPress forum interface.
+| Surface | Use for |
+|---------|---------|
+| `contentBridge` | Loading, serializing, saving, replacing content, and reporting dirty state. |
+| `entityBridge` | Describing the host record being edited and coordinating entity edit/reset hooks. |
+| `services` | Supplying callable host capabilities such as fetch, media, notices, autocomplete, autosave, and telemetry. |
+| `lifecycle` | Instance-scoped load, focus, error, save, and teardown callbacks. |
+| `hostAdapter` | Host-owned UI coordination and legacy lifecycle integrations. |
+| `runtimeAdapter` | Low-level runtime hooks such as before-load preparation, content reactions, media upload resolution, handler installation, and cleanup. Prefer the higher-level surfaces first. |
 
-#### Responsibilities
+BBPress-specific runtime behavior is implemented as a bundled client adapter in `src/editor/bbpress-adapter.ts`. The generic editor runtime selects it for `editorType === 'bbpress'`, but does not call bbPress-specific methods directly.
 
-- Detect and handle forum/topic/reply pages
-- Enable editor on topic/reply creation and editing screens
-- Process blocks in forum content display
-- Manage bbPress-specific permissions
-- Handle bbPress admin editing with full block support
+## Gutenberg Boundary
 
-#### Integration Points
+Blocks Everywhere composes the editor from public Gutenberg packages wherever possible:
 
-**Frontend (Forums)**:
-- Hooked to `bbp_template_redirect` action
-- Checks if current page is topic/reply/forum
-- Loads editor interface if appropriate
+- `@wordpress/block-editor` for canvas, block list, inserter, settings, and serialization.
+- `@wordpress/editor` for canonical post editing when a real WordPress post entity is available.
+- `@wordpress/data`, `@wordpress/components`, and related packages for stores and chrome.
 
-**Backend (Admin)**:
-- Hooked to `bbp_ready` action
-- Enables editor on topic/reply/forum edit screens
-- Restricts editing based on capabilities
+Some chrome surfaces still depend on experimental Gutenberg exports because stable host-agnostic primitives are not available yet. Those boundaries are documented in `docs/portable-editor-adapters.md` and should stay isolated behind Blocks Everywhere settings instead of becoming host-specific contracts.
 
-#### Content Rendering
-
-Filters applied to bbPress output:
-
-- `bbp_get_forum_content` - Process forum content blocks
-- `bbp_get_topic_content` - Process topic content blocks  
-- `bbp_get_reply_content` - Process reply content blocks
-
-All filters:
-1. Run WordPress autoembed functionality
-2. Process and render blocks
-3. Return sanitized HTML
-
-#### Permission Model
-
-- **Topic/Reply Authors**: Can edit own content
-- **Moderators**: Can edit any content
-- **Administrators**: Full editing access
-- **Regular Users**: Can reply to topics (blocks available if enabled)
-
-#### Configuration
-
-Enable with filters:
-- `blocks_everywhere_bbpress` - Enable on forum frontend
-- `blocks_everywhere_bbpress_admin` - Enable in forum admin
-- `blocks_everywhere_admin_cap` - Required capability for admin editing
-
-#### Key Methods
-
-- `bbp_template_redirect()` - Handle forum page initialization
-- `get_current_topic_id()` - Retrieve current topic ID
-- `get_current_forum_id()` - Retrieve current forum ID
-- `enable_topic_edit_screen()` - Setup topic editing interface
-- `save_topic( $topic_id )` - Handle topic save with blocks
-
-### Comments Handler
-
-**File**: `classes/handlers/class-comments.php`  
-**Namespace**: `Automattic\Blocks_Everywhere\Handler`  
-**Class**: `Comments extends Handler`
-
-Integrates Gutenberg editor into WordPress comment forms.
-
-#### Responsibilities
-
-- Enable editor on comment submission forms
-- Process blocks in comment content
-- Handle comment HTML sanitization
-- Manage comment author permissions
-- Support nested comments with blocks
-
-#### Integration Points
-
-**Frontend (Comment Forms)**:
-- Hooked to `comment_form_default_fields` or form template
-- Adds editor interface to comment textarea
-- Manages form submission
-
-**Content Display**:
-- Filter: `comment_text` - Process blocks in comment output
-- Handles nested comment rendering
-
-#### Permission Model
-
-- **Logged-in Users**: Can use blocks if enabled
-- **Comment Author**: Can edit own comment (if supported)
-- **Moderators**: Can edit via admin screen
-- **Administrators**: Full editing access
-
-#### Configuration
-
-Enable with filters:
-- `blocks_everywhere_comments` - Enable on comment form
-- `blocks_everywhere_admin` - Enable in admin moderation
-
-#### Key Methods
-
-- `enable_editor_on_form()` - Hook editor into comment form
-- `sanitize_comment_content( $content )` - Process comment blocks
-- `validate_comment_blocks( $content )` - Check for disallowed blocks
-- `render_comment_with_blocks( $content )` - Output comment HTML
-
-#### Caveats
-
-- Comment depth limitations (WordPress native)
-- Nested comment threading affects editor display
-- Some themes have aggressive comment form styling
-
-### BuddyPress Handler
-
-**File**: `classes/handlers/class-buddypress.php`  
-**Namespace**: `Automattic\Blocks_Everywhere\Handler`  
-**Class**: `BuddyPress extends Handler`
-
-Integrates Gutenberg editor into BuddyPress activity stream and messaging.
-
-#### Responsibilities
-
-- Enable editor in activity stream posts
-- Support block editing in direct messages
-- Process blocks in activity content
-- Manage BuddyPress-specific permissions
-
-#### Integration Points
-
-**Frontend (Activity)**:
-- BuddyPress activity form integration
-- Activity comment editing
-
-**Backend (Admin)**:
-- Activity moderation screens
-- User activity management
-
-#### Current Status: "Needs Work"
-
-This implementation is functional but has known limitations:
-
-**Implemented Features**:
-- Basic activity stream editor integration
-- Block rendering in activity content
-
-**Missing Features**:
-- Private messaging block support
-- Groups activity full integration
-- Activity mentions with blocks
-- Media in activity streams
-
-#### Permission Model
-
-- **Activity Authors**: Can edit own activity
-- **Group Members**: Can post in group activity (if enabled)
-- **Administrators**: Full editing access
-
-#### Configuration
-
-Enable with filters:
-- `blocks_everywhere_buddypress` - Enable on activity stream
-- `blocks_everywhere_admin` - Enable in admin moderation
-
-#### Key Methods
-
-- `enable_activity_editor()` - Hook editor into activity form
-- `process_activity_blocks( $content )` - Render activity blocks
-- `save_activity_with_blocks( $activity_id )` - Save activity content
-
-## Plugin Bootstrap
+## Server Bootstrap
 
 **File**: `blocks-everywhere.php`
 
-The main plugin file orchestrates loading:
+The plugin bootstrap loads the core classes, creates the shared `Editor`, and boots the context engine. Platform support is registered through filters and context definitions rather than separate handler subclass files.
+
+Typical flow:
 
 ```php
-// 1. Define constants and paths
-define( 'BLOCKS_EVERYWHERE_DIR', plugin_dir_path( __FILE__ ) );
-define( 'BLOCKS_EVERYWHERE_URL', plugin_dir_url( __FILE__ ) );
-
-// 2. Load classes
 require_once BLOCKS_EVERYWHERE_DIR . 'classes/class-editor.php';
 require_once BLOCKS_EVERYWHERE_DIR . 'classes/class-handler.php';
-require_once BLOCKS_EVERYWHERE_DIR . 'classes/handlers/class-bbpress.php';
-require_once BLOCKS_EVERYWHERE_DIR . 'classes/handlers/class-comments.php';
-require_once BLOCKS_EVERYWHERE_DIR . 'classes/handlers/class-buddypress.php';
+require_once BLOCKS_EVERYWHERE_DIR . 'classes/class-engine.php';
 
-// 3. Initialize
 new Editor();
 
-if ( apply_filters( 'blocks_everywhere_comments', BLOCKS_EVERYWHERE_COMMENTS ) ) {
-    new Handler\Comments();
-}
-
-if ( apply_filters( 'blocks_everywhere_bbpress', BLOCKS_EVERYWHERE_BBPRESS ) ) {
-    new Handler\bbPress();
-}
-
-if ( apply_filters( 'blocks_everywhere_buddypress', BLOCKS_EVERYWHERE_BUDDYPRESS ) ) {
-    new Handler\BuddyPress();
-}
+$engine = new Engine();
+add_action( 'init', [ $engine, 'boot' ] );
 ```
 
 ## Hook System
 
-### WordPress Hooks Used
+Important filters:
 
-**Filters** (input/output transformation):
-- `block_editor_settings_all` - Customize editor settings
-- `blocks_everywhere_editor_settings` - Platform-specific editor config
-- `blocks_everywhere_comments` - Enable/disable comments feature
-- `blocks_everywhere_bbpress` - Enable/disable bbPress feature
-- `blocks_everywhere_buddypress` - Enable/disable BuddyPress feature
-- `blocks_everywhere_admin` - Enable/disable admin editing
-- `blocks_everywhere_admin_cap` - Required capability for admin
-- `blocks_everywhere_theme_compat` - Enable theme compatibility mode
-- `should_load_block_editor_scripts_and_styles` - Force editor scripts
-- `wp_theme_json_data_theme` - Provide theme.json configuration
+- `blocks_everywhere_contexts` registers server contexts for editor surfaces.
+- `blocks_everywhere_editor_settings` customizes the settings sent to editor instances.
+- `blocks_everywhere_allowed_blocks` customizes allowed block names for a context type.
+- `blocks_everywhere_editor_styles` customizes iframe editor styles.
+- `blocks_everywhere_editor_scripts` customizes iframe editor scripts.
+- `block_editor_settings_all` receives the final WordPress block editor settings.
+- `block_editor_preload_paths` can be scoped by an active context.
+- `block_categories_all` can be scoped by an active context.
 
-**Actions** (one-way events):
-- `template_redirect` - Editor initialization on frontend
-- `bbp_template_redirect` - BBPress page setup
-- `bbp_ready` - BBPress initialization
-- `admin_enqueue_scripts` - Asset loading in admin
+Important actions:
 
-### Custom Hooks Provided
-
-Blocks Everywhere provides these extension points:
-
-- `blocks_everywhere_editor_settings` - Plugins can modify editor config
-- `blocks_everywhere_allowed_blocks` - Override allowed blocks list
-- `blocks_everywhere_render_block_*` - Custom block rendering
+- Context `trigger` hooks load frontend editor instances.
+- `admin_enqueue_scripts` loads admin contexts when their `admin_hook` matches.
+- Context `editor_assets`, `after_load`, and legacy `editor_setup` callbacks provide integration-specific setup points.
 
 ## Asset Loading Strategy
 
-### JavaScript Bundles
+Compiled bundles live in `build/` and are generated from the TypeScript and SCSS sources under `src/`.
 
-Compiled from TypeScript/React source files to webpack bundles:
+Key bundles:
 
-- `build/blocks-everywhere.js` - Main plugin editor
-- `build/blocks-everywhere.css` - Plugin editor styles
-- `build/blocks-everywhere-view.js` - Frontend block rendering
+- `index.min.js` and `style-index.min.css` provide the editor runtime.
+- `support-content-editor.min.js` and `support-content-editor.min.css` support block editing for content surfaces.
+- `support-content-view.min.js` and `support-content-view.min.css` support rendered block content on the frontend.
 
-### CSS Architecture
-
-Modular SCSS structure with platform-specific styling:
-
-```scss
-// Base editor styles
-styles/editor.scss
-  ├── Container layout
-  ├── Block styling
-  └── Interactive elements
-
-// Platform-specific overrides
-styles/bbpress.scss      (Forum styling)
-styles/comments.scss     (Comment styling)  
-styles/buddypress.scss   (Activity styling)
-styles/theme-compat.scss (Theme fixes)
-```
-
-### Conditional Loading
-
-Assets loaded based on context:
-
-```php
-if ( should_load_block_editor_scripts_and_styles() ) {
-    wp_enqueue_script( 'blocks-everywhere' );
-    wp_enqueue_style( 'blocks-everywhere' );
-    
-    if ( is_bbpress() ) {
-        wp_enqueue_style( 'blocks-everywhere-bbpress' );
-    }
-}
-```
+Assets are registered once by the shared handler infrastructure and enqueued when an active context loads the editor or view assets.
 
 ## Data Flow: Creating Content
 
 ```
-1. User opens editor (comment form, forum topic, activity)
+1. Host page reaches a registered context trigger.
    ↓
-2. Isolated Block Editor initialized via JavaScript
+2. Engine checks the context condition and bootstraps settings.
    ↓
-3. Editor configuration applied (allowed blocks, settings)
+3. Blocks Everywhere loads the embedded Gutenberg editor for the target textarea/container.
    ↓
-4. User edits content with blocks
+4. Optional client adapters load initial content, services, entity state, patterns, and chrome.
    ↓
-5. Form submitted with serialized blocks
+5. User edits with Gutenberg blocks.
    ↓
-6. PHP handler receives content
+6. Content bridge or native form submission persists serialized block markup.
    ↓
-7. Blocks validated/sanitized
-   ↓
-8. Content saved to database
-   ↓
-9. Content displayed with do_blocks() processing
+7. Host platform validates, sanitizes, and saves content.
 ```
 
 ## Data Flow: Displaying Content
 
 ```
-1. Content retrieved from database (comment, forum post, activity)
+1. Host content is retrieved from storage.
    ↓
-2. Handler filter intercepts output (bbp_get_topic_content, etc.)
+2. Host or context-specific filters pass serialized blocks to the shared rendering helper.
    ↓
-3. do_blocks() processes serialized blocks
+3. parse_blocks() and render_block() produce frontend HTML.
    ↓
-4. render_block() converts each block to HTML
+4. WordPress sanitization runs where the host platform requires it.
    ↓
-5. wp_kses_post() sanitizes HTML
-   ↓
-6. Output displayed on page
+5. Rendered block content appears in the host surface.
 ```
 
 ## Extensibility Patterns
 
-### Adding Block Support to New Platforms
+### Add A New Editor Surface
 
-1. Create handler class extending `Handler`
-2. Implement `enable_editor()` and `should_load_editor()`
-3. Hook into platform-specific actions/filters
-4. Process content through `do_blocks()`
-5. Register in main plugin file
+Register a context through `blocks_everywhere_contexts` with a stable `type`, `textarea`, `trigger`, and optional settings callbacks. Add host-specific save/render filters in the owning plugin or context callback.
 
-### Customizing Editor Settings
+### Customize Editor Settings
 
 ```php
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-    // Add custom blocks
+add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
     $settings['blocksEverywhere']['blocks']['allowBlocks'][] = 'custom/block';
-    
-    // Modify allowed embeds
     $settings['blocksEverywhere']['allowEmbeds'] = [ 'youtube', 'twitter' ];
-    
-    // Custom CSS classes
     $settings['blocksEverywhere']['className'] = 'my-custom-editor-class';
-    
+
     return $settings;
 } );
 ```
 
-### Restricting Block Usage
+### Restrict Block Usage
 
 ```php
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-    // Only allow basic blocks
+add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
     $settings['blocksEverywhere']['blocks']['allowBlocks'] = [
         'core/paragraph',
         'core/heading',
         'core/list',
     ];
-    
+
     return $settings;
 } );
 ```
 
 ## Testing Architecture
 
-### PHPUnit Tests
+PHP tests live in `tests/` and cover the server context engine, bootstrap settings, lifecycle payload sanitization, initial content, pattern settings, global side-effect boundaries, and content rendering behavior.
 
-Located in `tests/` directory:
+Manual testing should cover:
 
-- `test-bbpress-content.php` - BBPress handler tests
-- Focus on block rendering and content processing
-- Uses WordPress test framework
+- Editor mount and unmount on each host surface.
+- Block availability, media flows, autosave, and form submission.
+- Permission scenarios for authors, moderators, and administrators.
+- Rendered block output and sanitization.
+- Theme compatibility and editor chrome layout.
 
-### Manual Testing Requirements
+## Related Documentation
 
-1. **Theme Compatibility**: Test on various themes
-2. **Block Interactions**: Verify block functionality in each platform
-3. **Permission Scenarios**: Test with different user roles
-4. **Content Scenarios**: Test with various block combinations
-
----
-
-**Related Documentation**:
-- [Handler Details](handlers/) - Platform-specific implementations
-- [Components Guide](components.md) - React/TypeScript components
+- [Portable Editor Adapter Guide](portable-editor-adapters.md)
+- [bbPress Integration Guide](handlers/bbpress-handler.md)
+- [Components Guide](components.md)
