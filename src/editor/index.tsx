@@ -47,7 +47,13 @@ import PostEntityShell, { EditorEditsBridge, type PostEntityRef } from './post-e
 import { resolveHostRuntimeAdapter } from './runtime-adapters';
 import { type EditorMountOptions, resolveMountSettings } from './settings';
 import { mergeSettings } from './utils';
-import { createScopedApiFetch, createServiceContext, notifyService, resolvePermission } from './services';
+import {
+	createScopedApiFetch,
+	createServiceContext,
+	notifyService,
+	registerAutocompleteServices,
+	resolvePermission,
+} from './services';
 import { RegisteredSlotFills } from './slot-fills';
 import { getBootstrapSettingsSummary } from '../bootstrap-settings';
 
@@ -401,6 +407,11 @@ function createEditorContainer( container, textarea, settings ) {
 		settings,
 		textarea,
 	} );
+	const cleanupAutocompleteServices = registerAutocompleteServices( services?.autocomplete, serviceContext );
+	const cleanupRuntimeAutocompleteServices = registerAutocompleteServices(
+		runtimeAdapter?.resolveAutocomplete?.( serviceContext ),
+		serviceContext
+	);
 
 	const emitLifecycle = ( name, detail = {} ) => {
 		dispatchLifecycleEvent( name, { container, detail, settings, textarea } );
@@ -622,6 +633,8 @@ function createEditorContainer( container, textarea, settings ) {
 		emitLifecycle( 'before-unmount', { instance } );
 		isUnmounted = true;
 
+		cleanupAutocompleteServices();
+		cleanupRuntimeAutocompleteServices();
 		runtimeAdapter?.cleanup?.();
 		container?.removeEventListener?.( 'focusin', onFocusIn );
 		container?.removeEventListener?.( 'focusout', onFocusOut );

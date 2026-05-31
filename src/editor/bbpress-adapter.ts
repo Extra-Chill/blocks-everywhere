@@ -1,12 +1,12 @@
 /**
- * WordPress dependencies
- */
-import { addFilter } from '@wordpress/hooks';
-
-/**
  * Internal dependencies
  */
-import type { EditorHostRuntimeAdapter, EditorServiceContext, EditorServices } from './editor-services';
+import type {
+	EditorAutocompleteCompleter,
+	EditorHostRuntimeAdapter,
+	EditorServiceContext,
+	EditorServices,
+} from './editor-services';
 
 type BbPressAdapterOptions = {
 	container: HTMLElement;
@@ -23,25 +23,6 @@ type BbPressAdapterOptions = {
 		details?: unknown
 	) => void;
 };
-
-let hasInstalledAutocompleteCompatibilityFilter = false;
-
-function installAutocompleteCompatibilityFilter( settings: typeof wpBlocksEverywhere ) {
-	if ( hasInstalledAutocompleteCompatibilityFilter || ! settings?.autocompleter ) {
-		return;
-	}
-
-	// bbPress surfaces provide their own mention completers. The Gutenberg
-	// default queries post authors via /wp/v2/users, which is not the right
-	// suggestion set for forum topics/replies.
-	addFilter(
-		'editor.Autocomplete.completers',
-		'blocks-everywhere/bbpress-strip-default-users-completer',
-		( completers = [] ) => completers.filter( ( completer ) => completer.name !== 'users' )
-	);
-
-	hasInstalledAutocompleteCompatibilityFilter = true;
-}
 
 function getElementValue( element: Element | null ): string {
 	return element && 'value' in element ? String( element.value || '' ) : '';
@@ -394,9 +375,21 @@ export function createBbPressAdapter( {
 				console.error( 'Blocks Everywhere: failed to restore bbPress draft', error );
 			}
 		},
-		installHandlers() {
-			installAutocompleteCompatibilityFilter( settings );
+		resolveAutocomplete() {
+			if ( ! settings?.autocompleter ) {
+				return null;
+			}
 
+			return {
+				filterCompleters( completers: EditorAutocompleteCompleter[] ) {
+					// bbPress surfaces provide their own mention completers. The Gutenberg
+					// default queries post authors via /wp/v2/users, which is not the right
+					// suggestion set for forum topics/replies.
+					return completers.filter( ( completer ) => completer.name !== 'users' );
+				},
+			};
+		},
+		installHandlers() {
 			if ( isTopicDraft() ) {
 				const forumSelect = document.getElementById( 'bbp_forum_id' );
 				if ( forumSelect && ! forumSelect.__blocksEverywhereDraftMoveInstalled ) {

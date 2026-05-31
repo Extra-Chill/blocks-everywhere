@@ -265,6 +265,26 @@ declare interface BlocksEverywherePermissionsService {
 	canUploadMedia?: boolean | ( ( context: BlocksEverywhereEditorServiceContext ) => boolean | undefined );
 }
 
+declare type BlocksEverywhereAutocompleteCompleter = Record< string, unknown >;
+
+declare type BlocksEverywhereAutocompleteService =
+	| ( (
+			completers: BlocksEverywhereAutocompleteCompleter[],
+			context: BlocksEverywhereEditorServiceContext
+	  ) => BlocksEverywhereAutocompleteCompleter[] | void )
+	| {
+			completers?:
+				| BlocksEverywhereAutocompleteCompleter[]
+				| ( (
+						context: BlocksEverywhereEditorServiceContext
+				  ) => BlocksEverywhereAutocompleteCompleter[] | void );
+			filterCompleters?: (
+				completers: BlocksEverywhereAutocompleteCompleter[],
+				context: BlocksEverywhereEditorServiceContext
+			) => BlocksEverywhereAutocompleteCompleter[] | void;
+	  }
+	| null;
+
 declare type BlocksEverywhereAutosaveService =
 	| ( ( payload: Record< string, unknown >, context: BlocksEverywhereEditorServiceContext ) => unknown )
 	| {
@@ -288,6 +308,7 @@ declare interface BlocksEverywhereEditorServices {
 	apiFetch?: ( options: Record< string, unknown > ) => Promise< unknown >;
 	apiFetchMiddleware?: ( options: Record< string, unknown >, next: Function ) => unknown;
 	apiFetchMiddlewares?: Array< ( options: Record< string, unknown >, next: Function ) => unknown >;
+	autocomplete?: BlocksEverywhereAutocompleteService;
 	autosave?: BlocksEverywhereAutosaveService;
 	fetchLinkSuggestions?: ( search: string, searchOptions?: Record< string, unknown > ) => Promise< unknown >;
 	mediaUpload?: Function | null;
@@ -300,6 +321,9 @@ declare interface BlocksEverywhereRuntimeAdapter {
 	installHandlers?: () => void;
 	onBeforeLoad?: () => Promise< void > | void;
 	onContent?: ( blocks: object[], serialized: string, source: 'input' | 'change' | string ) => void;
+	resolveAutocomplete?: (
+		context: BlocksEverywhereEditorServiceContext
+	) => BlocksEverywhereAutocompleteService | undefined;
 	resolveMediaUpload?: (
 		context: BlocksEverywhereEditorServiceContext & { canUploadMedia: boolean }
 	) => Function | null | undefined;

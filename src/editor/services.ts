@@ -2,11 +2,18 @@
  * WordPress dependencies
  */
 import apiFetch from '@wordpress/api-fetch';
+import { addFilter } from '@wordpress/hooks';
 
 /**
  * Internal dependencies
  */
-import type { EditorMountSettings, EditorServiceContext, EditorServices } from './editor-services';
+import type {
+	EditorAutocompleteCompleter,
+	EditorAutocompleteService,
+	EditorMountSettings,
+	EditorServiceContext,
+	EditorServices,
+} from './editor-services';
 import { normalizeModeNames, toArray } from './utils';
 
 const removeNullPostFromFileUploadMiddleware = ( options, next ) => {
@@ -20,6 +27,86 @@ const removeNullPostFromFileUploadMiddleware = ( options, next ) => {
 
 	return next( options );
 };
+
+type ActiveAutocompleteRegistration = {
+	autocomplete: EditorAutocompleteService;
+	context: EditorServiceContext;
+};
+
+const activeAutocompleteRegistrations = new Set< ActiveAutocompleteRegistration >();
+let isAutocompleteFilterInstalled = false;
+
+function resolveServiceCompleters( autocomplete: EditorAutocompleteService, context: EditorServiceContext ) {
+	if ( ! autocomplete || typeof autocomplete === 'function' ) {
+		return [];
+	}
+
+	try {
+		const completers = autocomplete.completers;
+		if ( typeof completers === 'function' ) {
+			return toArray( completers( context ) );
+		}
+
+		return toArray( completers );
+	} catch ( error ) {
+		// eslint-disable-next-line no-console
+		console.error( 'Blocks Everywhere: autocomplete completer service failed', error );
+		return [];
+	}
+}
+
+function applyAutocompleteService(
+	completers: EditorAutocompleteCompleter[],
+	autocomplete: EditorAutocompleteService,
+	context: EditorServiceContext
+) {
+	try {
+		if ( typeof autocomplete === 'function' ) {
+			return autocomplete( completers, context ) || completers;
+		}
+
+		return autocomplete?.filterCompleters?.( completers, context ) || completers;
+	} catch ( error ) {
+		// eslint-disable-next-line no-console
+		console.error( 'Blocks Everywhere: autocomplete filter service failed', error );
+		return completers;
+	}
+}
+
+function ensureAutocompleteFilterInstalled() {
+	if ( isAutocompleteFilterInstalled ) {
+		return;
+	}
+
+	// Gutenberg portability gap: `editor.Autocomplete.completers` is a
+	// page-global hook. BE uses Gutenberg's completer primitive and scopes custom
+	// host sources as far as the upstream hook allows.
+	addFilter(
+		'editor.Autocomplete.completers',
+		'blocks-everywhere/autocomplete-services',
+		( completers = [] ) => {
+			let resolvedCompleters = [ ...completers ];
+
+			activeAutocompleteRegistrations.forEach( ( registration ) => {
+				const additionalCompleters = resolveServiceCompleters(
+					registration.autocomplete,
+					registration.context
+				);
+				resolvedCompleters = [ ...resolvedCompleters, ...additionalCompleters ];
+				resolvedCompleters = applyAutocompleteService(
+					resolvedCompleters,
+					registration.autocomplete,
+					registration.context
+				);
+			} );
+
+			return resolvedCompleters;
+		},
+		20
+	);
+
+	isAutocompleteFilterInstalled = true;
+}
 
 export function createServiceContext( settings, textarea?, container? ): EditorServiceContext {
 	return {
@@ -61,6 +148,22 @@ export function createScopedApiFetch( services: EditorServices ) {
 		( next, middleware ) => ( options ) => middleware( options, next ),
 		( options ) => baseApiFetch( options )
 	);
+}
+
+export function registerAutocompleteServices(
+	autocomplete: EditorAutocompleteService | undefined,
+	context: EditorServiceContext
+) {
+	if ( ! autocomplete ) {
+		return () => {};
+	}
+
+	ensureAutocompleteFilterInstalled();
+
+	const registration = { autocomplete, context };
+	activeAutocompleteRegistrations.add( registration );
+
+	return () => activeAutocompleteRegistrations.delete( registration );
 }
 
 function getDefaultApiFetchMiddlewares( settings ) {
