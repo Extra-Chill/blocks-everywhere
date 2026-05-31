@@ -1,7 +1,8 @@
 /**
  * Internal dependencies
  */
-import { getBlockContext, getEditorContext } from './editor-data-boundary';
+import { getBlockContext, getEditorContext } from './editor-context';
+import { normalizeLoadedBlocks } from './content-bridge-controller';
 import { isPlainObject } from './utils';
 
 export function getEntityBridge( settings ) {
@@ -44,14 +45,7 @@ function createEntityBridgeContext( { container, instance, settings, source, tex
 	};
 }
 
-export function createEntityBridgeController( {
-	container,
-	contentBridge,
-	instance,
-	normalizeLoadedBlocks,
-	settings,
-	textarea,
-} ) {
+export function createEntityBridgeController( { container, contentBridge, instance, settings, textarea } ) {
 	const bridge = getEntityBridge( settings );
 	const getContext = ( source? ) =>
 		createEntityBridgeContext( {
