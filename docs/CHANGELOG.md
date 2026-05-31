@@ -2,6 +2,41 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.3.0] - 2026-05-30
+
+### Added
+- expose frontend pattern settings
+- add initial content transform pipeline
+- add portable host entity bridge
+- add portable editor data context
+- add portable editor service injection
+- add portable editor mode settings
+- add portable host adapter hooks
+- expand portable editor chrome slots
+- add portable editor lifecycle events
+- add portable content bridge
+- add portable editor mount API
+- add portable server context bootstrap
+
+### Changed
+- share editor service types
+- extract bbPress editor adapter
+- neutralize runtime API names
+- remove dead wp-interface-shim.ts
+
+### Fixed
+- tighten pattern settings API
+- clarify global bootstrap settings boundaries
+- keep allowed blocks scoped to editor instances
+- isolate media upload filter installation
+- support multiple editor bootstrap settings
+- scope portable editor REST bootstrap
+- harden portable editor public lifecycle payloads
+- fix portable editor contract semantics
+- restore fork-local files needed for Extra-Chill deploy pipeline
+- gate bbPress media uploads
+- make attachment reparenting opt-in
+
 ## [3.2.5] - 2026-05-26
 
 ### Fixed
