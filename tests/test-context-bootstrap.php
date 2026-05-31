@@ -51,6 +51,9 @@ class Context_Bootstrap_Test extends TestCase {
 					],
 					'allowed_blocks'        => [ 'core/paragraph', 'core/image' ],
 					'disallowed_blocks'     => [ 'core/image' ],
+					'disallowed_block_variations' => [
+						[ 'blockName' => 'core/paragraph', 'variationName' => 'portable/paragraph' ],
+					],
 					'features'              => [ 'portableToolbar' => true ],
 					'entity_bridge'         => [
 						'entity'       => [
@@ -117,6 +120,10 @@ class Context_Bootstrap_Test extends TestCase {
 		$this->assertFalse( $settings['blocksEverywhere']['settingsTransforms'][0]['templateLock'] );
 		$this->assertSame( [ 'core/paragraph' ], $settings['blocksEverywhere']['blocks']['allowBlocks'] );
 		$this->assertSame( [ 'core/image' ], $settings['blocksEverywhere']['blocks']['disallowBlocks'] );
+		$this->assertSame(
+			[ [ 'blockName' => 'core/paragraph', 'variationName' => 'portable/paragraph' ] ],
+			$settings['blocksEverywhere']['blockVariations']['disallow']
+		);
 		$this->assertTrue( $settings['blocksEverywhere']['features']['portableToolbar'] );
 		$this->assertSame( 7, $settings['blocksEverywhere']['entityBridge']['parentId'] );
 		$this->assertSame( 'abc123', $settings['blocksEverywhere']['entityBridge']['revision'] );

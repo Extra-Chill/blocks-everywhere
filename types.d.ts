@@ -29,6 +29,18 @@ declare interface BlocksEverywherePatterns {
 	disallowPatterns?: string[];
 }
 
+declare interface BlocksEverywhereBlockVariationRef {
+	blockName?: string;
+	block?: string;
+	variationName?: string;
+	name?: string;
+}
+
+declare interface BlocksEverywhereBlockVariations {
+	/** Page-global block variations to unregister while this editor runtime is present. */
+	disallow?: BlocksEverywhereBlockVariationRef[];
+}
+
 declare interface Toolbar {
 	/** Document-level block inserter button. Default: true. */
 	inserter?: boolean;
@@ -274,6 +286,16 @@ declare interface BlocksEverywhereEditorServices {
 	permissions?: BlocksEverywherePermissionsService | null;
 }
 
+declare interface BlocksEverywhereRuntimeAdapter {
+	cleanup?: () => void;
+	installHandlers?: () => void;
+	onBeforeLoad?: () => Promise< void > | void;
+	onContent?: ( blocks: object[], serialized: string, source: 'input' | 'change' | string ) => void;
+	resolveMediaUpload?: (
+		context: BlocksEverywhereEditorServiceContext & { canUploadMedia: boolean }
+	) => Function | null | undefined;
+}
+
 declare interface BlocksEverywhereEntityBridgeEntity {
 	id?: string | number;
 	type?: string;
@@ -356,7 +378,9 @@ declare interface BlocksEverywhereModeSettings {
 	features?: Record< string, unknown >;
 	initialContent?: BlocksEverywhereInitialContent;
 	patterns?: BlocksEverywherePatterns;
+	blockVariations?: BlocksEverywhereBlockVariations;
 	preferenceKey?: string;
+	runtimeAdapter?: BlocksEverywhereRuntimeAdapter | false | null;
 	services?: BlocksEverywhereEditorServices;
 	servicesByMode?: Record< string, BlocksEverywhereEditorServices >;
 	settingsTransforms?: BlocksEverywhereSettingsTransform[];
@@ -391,6 +415,7 @@ declare interface BlocksEverywhere {
 	hostContext?: Record< string, unknown >;
 	initialContent?: BlocksEverywhereInitialContent;
 	patterns?: BlocksEverywherePatterns;
+	blockVariations?: BlocksEverywhereBlockVariations;
 	mediaUploadEndpoint?: string;
 	__experimentalOnInput?: ( block: unknown ) => unknown;
 	__experimentalOnChange?: ( block: unknown ) => unknown;
@@ -402,6 +427,7 @@ declare interface BlocksEverywhere {
 	mode?: string | string[];
 	modes?: Record< string, BlocksEverywhereModeSettings | BlocksEverywhereSettingsTransform >;
 	preferenceKey?: string;
+	runtimeAdapter?: BlocksEverywhereRuntimeAdapter | false | null;
 	services?: BlocksEverywhereEditorServices;
 	servicesByMode?: Record< string, BlocksEverywhereEditorServices >;
 	settingsTransforms?: BlocksEverywhereSettingsTransform[];

@@ -42,3 +42,11 @@ export interface EditorServices {
 	notices?: EditorNoticeService;
 	permissions?: EditorPermissionsService;
 }
+
+export interface EditorHostRuntimeAdapter {
+	cleanup?: () => void;
+	installHandlers?: () => void;
+	onBeforeLoad?: () => Promise< void > | void;
+	onContent?: ( blocks: object[], serialized: string, source: 'input' | 'change' | string ) => void;
+	resolveMediaUpload?: ( context: EditorServiceContext & { canUploadMedia: boolean } ) => Function | null | undefined;
+}

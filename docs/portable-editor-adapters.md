@@ -51,6 +51,7 @@ The first-wave APIs establish the shared surface that second-wave adapter work s
 | Content bridge | `settings.blocksEverywhere.contentBridge` | Loading, serializing, saving, and hot-replacing content through host persistence. |
 | Entity bridge | `settings.blocksEverywhere.entityBridge` | Passing host entity identity, metadata, and edit/reset hooks into an editor instance. |
 | Lifecycle callbacks | `settings.blocksEverywhere.lifecycle` | Instance-scoped callbacks for load, focus, error, and teardown. |
+| Runtime adapter | `settings.blocksEverywhere.runtimeAdapter` | Optional low-level host runtime hooks for before-load preparation, content reactions, media upload resolution, handler install, and cleanup. |
 | Lifecycle DOM events | `blocksEverywhere:editor:{event}` | Host listeners that should not be coupled to the settings object. |
 | Slot fills | `window.blocksEverywhere.registerSlotFill( slot, renderFn )` | Host-owned controls and status rendered inside editor chrome. |
 | Chrome settings | `settings.blocksEverywhere.chrome` and `settings.blocksEverywhere.toolbar` | Mode-like layout and toolbar choices already supported by the embedded editor. |
@@ -398,7 +399,7 @@ Services are functions the editor can call without learning host internals.
 Useful services include:
 
 -   `apiFetch`: authenticated host requests.
--   `media`: upload, select, or validate media.
+-   `mediaUpload`: upload, select, or validate media through Gutenberg's media upload contract.
 -   `autosave`: save draft content without submitting the host form.
 -   `mentions`: resolve autocomplete suggestions.
 -   `notify`: show success, warning, and error notices.
@@ -524,6 +525,8 @@ The adapter composes with the other portable APIs:
 
 `hostAdapter.onSave()` remains as a legacy alias for `onContentChange()` during the portable adapter migration. Treat save wording as persistence-specific in new adapters.
 
+Use `blocksEverywhere.runtimeAdapter` only when a host needs lower-level runtime behavior than lifecycle callbacks and services can express. It can prepare content before first load, install host event handlers, react to serialized content changes, resolve a Gutenberg-compatible media upload function, and clean up on unmount. Passing `false` disables built-in runtime adapters for that mount. The bundled bbPress integration is one runtime adapter implementation; generic host apps should prefer services, content bridges, entity bridges, and `hostAdapter` callbacks until they need this lower-level hook.
+
 ### Server-Side Context Bootstrapping
 
 Server-side bootstrapping should produce the initial editor contract for a host surface before JavaScript mounts.
@@ -559,6 +562,43 @@ const replySettings = window.blocksEverywhere.getSettings( 'reply-composer' );
 The registry is a compatibility layer around settings lookup, not a place to store secrets. Keep nonces and privileged operations behind server-rendered WordPress settings or explicit per-instance services.
 
 Some Gutenberg APIs are page-global rather than editor-instance scoped, including block registration filters, block variations, rich-text formats, and the legacy twemoji parser hook. Those bootstrap paths use the aggregate registered settings summary to preserve existing page behavior without treating those hooks as portable adapter contracts.
+
+When a host surface must remove page-global variations, declare that explicitly instead of hiding the behavior in host code:
+
+```javascript
+window.blocksEverywhere.mountEditor( textarea, {
+	settings: {
+		...wpBlocksEverywhere,
+		blocksEverywhere: {
+			...wpBlocksEverywhere.blocksEverywhere,
+			blockVariations: {
+				disallow: [
+					{ blockName: 'core/paragraph', variationName: 'host/special-paragraph' },
+				],
+			},
+		},
+	},
+} );
+```
+
+This remains a page-global action because Gutenberg registers block variations globally. Use it only for compatibility constraints that cannot be expressed through instance-scoped allowed blocks, pattern settings, transforms, or services. The bbPress adapter uses the same boundary for its legacy Stretchy variation pruning so the generic runtime does not need to know bbPress draft details.
+
+Server contexts can declare the same compatibility boundary with `disallowed_block_variations`:
+
+```php
+add_filter( 'blocks_everywhere_contexts', function ( $contexts ) {
+	$contexts['host-composer'] = [
+		'type'                         => 'composer',
+		'textarea'                     => '#host-content',
+		'container'                    => '.host-editor',
+		'disallowed_block_variations' => [
+			[ 'blockName' => 'core/paragraph', 'variationName' => 'host/special-paragraph' ],
+		],
+	];
+
+	return $contexts;
+} );
+```
 
 ## Second-Wave Coordination
 
