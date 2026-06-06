@@ -2,6 +2,20 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.4.0] - 2026-06-06
+
+### Added
+- integrate autocomplete services with Gutenberg completers
+- add portable editor fullscreen chrome
+
+### Changed
+- tighten editor runtime module boundaries
+- split portable editor runtime modules
+- harden portable editor runtime adapters
+
+### Fixed
+- guard PostEntityShell against post types with no core-data entity config
+
 ## [3.3.1] - 2026-05-30
 
 ### Changed
