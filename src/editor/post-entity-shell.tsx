@@ -96,6 +96,17 @@ export function EditorEditsBridge( { blocks }: { blocks: object[] } ): null {
  * Split out so that the entity-fetch hook only runs when we actually have a
  * postEntity to fetch (the parent gates this branch).
  *
+ * Two distinct fallback conditions are disambiguated here:
+ *   - Entity config ABSENT — the post type is not registered with the
+ *     `core/coreData` entity stack (not exposed to the REST entity layer), so
+ *     the record can never load AND mounting `<EditorProvider>` would make core
+ *     throw synchronously (`editEntityRecord` requires a loaded config),
+ *     escaping the `! post` guard and crashing the React tree. Degrade now to a
+ *     post-agnostic children render — the same fallback used for `id <= 0`.
+ *   - Entity config PRESENT but record `! post` — the entity is loadable but
+ *     still in flight. Keep waiting; once it arrives `useSelect` re-renders and
+ *     `<EditorProvider>` mounts.
+ *
  * @param root0                Component props.
  * @param root0.postEntity     Canonical post entity reference.
  * @param root0.editorSettings Editor settings passed to EditorProvider.
@@ -110,6 +121,16 @@ function EditorShell( {
 	editorSettings: Record< string, unknown >;
 	children: ReactNode;
 } ): ReactElement {
+	const entityConfig = useSelect(
+		( select ) =>
+			(
+				select( coreStore ) as {
+					getEntityConfig: ( kind: string, name: string ) => unknown;
+				}
+			 ).getEntityConfig( 'postType', postEntity.type ),
+		[ postEntity.type ]
+	);
+
 	const post = useSelect(
 		( select ) =>
 			(
@@ -120,9 +141,17 @@ function EditorShell( {
 		[ postEntity.type, postEntity.id ]
 	);
 
+	if ( ! entityConfig ) {
+		// No entity config for this post type: it is not exposed to the entity
+		// stack, so the record can never load and `<EditorProvider>` would make
+		// core throw. Degrade to a post-agnostic children render.
+		return <>{ children }</>;
+	}
+
 	if ( ! post ) {
-		// Entity not yet loaded. Render children without the provider tree;
-		// once the entity arrives, useSelect re-renders and EditorProvider mounts.
+		// Config present but entity not yet loaded. Render children without the
+		// provider tree; once the entity arrives, useSelect re-renders and
+		// EditorProvider mounts.
 		return <>{ children }</>;
 	}
 
