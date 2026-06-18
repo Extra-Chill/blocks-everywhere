@@ -39,6 +39,7 @@ import {
 	runHostAdapterCleanup,
 } from './lifecycle';
 import PostEntityShell, { EditorEditsBridge, type PostEntityRef } from './post-entity-shell';
+import { installRefreshReceiver } from './refresh-controller';
 import { resolveHostRuntimeAdapter } from './runtime-adapters';
 import { type EditorMountOptions, resolveMountSettings } from './settings';
 import { mergeSettings } from './utils';
@@ -478,6 +479,12 @@ function createEditorContainer( container, textarea, settings ) {
 	if ( typeof cleanupHostAdapter === 'function' ) {
 		cleanupCallbacks.push( () => runHostAdapterCleanup( cleanupHostAdapter ) );
 	}
+
+	// External-edit refresh receiver: when the host signals the watched post
+	// changed elsewhere, refetch + replace this editor's content safely. No-op
+	// unless the host configured `blocksEverywhere.refresh`.
+	cleanupCallbacks.push( installRefreshReceiver( textarea, settings ) );
+
 	emitLifecycle( 'mounted', { instance } );
 
 	const form = container.closest( 'form' );
