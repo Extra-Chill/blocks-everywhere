@@ -5,12 +5,12 @@
 	"main": "src/index.tsx",
 	"scripts": {
 		"start": "wp-scripts start",
-		"start:sync": "onchange '*.php' readme.txt 'build/**/*' 'classes/**/*.php' -- yarn build:sync",
+		"start:sync": "onchange '*.php' readme.txt 'build/**/*' 'classes/**/*.php' -- npm run build:sync",
 		"build": "wp-scripts build && ./bin/lintfix.sh",
 		"build:sync": "rsync -az --delete *.php readme.txt *.png build LICENSE.md classes build $npm_config_blocks_everywhere",
-		"release": "yarn build && rm -rf release && mkdir -p release && cp -R *.php readme.txt *.png build LICENSE.md classes release",
+		"release": "npm run build && rm -rf release && mkdir -p release && cp -R *.php readme.txt *.png build LICENSE.md classes release",
 		"release:sync": "rsync -az --delete release/ $npm_config_blocks_everywhere",
-		"dist": "yarn release && rm -rf dist && mkdir dist && mv release blocks-everywhere && zip blocks-everywhere.zip -r blocks-everywhere && mv blocks-everywhere release && mv blocks-everywhere.zip dist && release-it",
+		"dist": "npm run release && rm -rf dist && mkdir dist && mv release blocks-everywhere && zip blocks-everywhere.zip -r blocks-everywhere && mv blocks-everywhere release && mv blocks-everywhere.zip dist && release-it",
 		"dist:svn": "./bin/svn.sh $npm_package_version",
 		"lint:css": "wp-scripts lint-style",
 		"lint:js": "wp-scripts lint-js",
@@ -43,6 +43,9 @@
 		"release-it": "^18.1.2",
 		"remove-files-webpack-plugin": "^1.5.0",
 		"sass": "^1.83.0"
+	},
+	"overrides": {
+		"prettier": "npm:wp-prettier@3.0.3"
 	},
 	"dependencies": {
 		"@automattic/color-studio": "^2.5.0",

@@ -25,15 +25,10 @@ import BuddyPress from './buddypress';
 import ContentBridge from './content-bridge';
 import { createContentBridgeController } from './content-bridge-controller';
 import DetachedSidebar from './detached-sidebar';
-import { getBlockContext, getEditorContext } from './editor-context';
+import { getEditorContext } from './editor-context';
 import { MaybeEditorDataBoundary } from './editor-data-boundary';
 import EmbeddedEditorShell, { type ResolvedChromeConfig, type ResolvedToolbarConfig } from './embedded-editor-shell';
-import type {
-	EditorHostRuntimeAdapter,
-	EditorMountSettings,
-	EditorServiceContext,
-	EditorServices,
-} from './editor-services';
+import type { EditorServices } from './editor-services';
 import { createEntityBridgeController, getEntityBridgeEntity } from './entity-bridge-controller';
 import {
 	createHostAdapterContext,
