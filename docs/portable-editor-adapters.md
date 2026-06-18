@@ -696,3 +696,46 @@ Use this checklist to decide whether Blocks Everywhere can replace a bespoke emb
 -   The editor mode can be described with settings rather than a forked shell.
 -   The host can bootstrap initial settings server-side or through a clear frontend app payload.
 -   Open gaps are generic enough to map to issues [#50](https://github.com/Extra-Chill/blocks-everywhere/issues/50)-[#60](https://github.com/Extra-Chill/blocks-everywhere/issues/60).
+
+## External-Edit Refresh
+
+When something OTHER than the open editor writes the underlying post — a collaborator save, an external agent accepting an edit, future real-time collaboration — the editor's in-memory content diverges from the post and its next autosave clobbers the external change. Blocks Everywhere ships a generic receiver for this: tell the editor "the post you're editing changed externally" and it refetches and replaces its content safely.
+
+The receiver is transport-agnostic and host-agnostic. It listens for a single BE-owned client event and is driven entirely by host-provided wiring; it knows nothing about who triggers the refresh or why.
+
+### Event
+
+```
+document.dispatchEvent( new CustomEvent( 'blocksEverywhere:refresh-content', {
+    detail: { postId, blogId?, content? },
+} ) );
+```
+
+- `postId` — required; the post that changed. The receiver only reacts when this matches the post the editor is currently watching.
+- `blogId` — optional (multisite); forwarded to the host fetcher.
+- `content` — optional pre-resolved serialized block HTML, used only as a fallback when the host provides no fetcher. Refetch is preferred (single source of truth = the post that was just written).
+
+### Host wiring
+
+Post identity lives with the host, not the editor — a BE mount is post-agnostic, so the host must tell the receiver which post to watch and how to fetch it. Configure `settings.blocksEverywhere.refresh`:
+
+```js
+settings.blocksEverywhere.refresh = {
+    // Which post this instance is editing right now. Use a getter when the
+    // active post can change over the editor's lifetime (e.g. a draft picker).
+    watchPostId: () => activePostId,
+
+    // Refetch the post's current serialized block HTML. Preferred over trusting
+    // detail.content. BE is transport-agnostic, so the host owns the fetch.
+    fetchContent: async ( detail ) => fetchPostContent( detail.postId ),
+
+    // Quiesce in-flight autosave before content is replaced.
+    beforeRefresh: async () => cancelPendingAutosave(),
+
+    // Reset the host's autosave baseline to the applied HTML so the next
+    // autosave carries the external edit forward instead of re-clobbering it.
+    onRefreshed: ( html ) => { lastSavedPayload = html; contentSnapshot = html; },
+};
+```
+
+The receiver ignores events for any other post and is a complete no-op for mounts that have not opted in. A thin host adapter is the only place that should translate an upstream product-specific signal into this BE-generic event; the editor never learns the upstream event's name.
