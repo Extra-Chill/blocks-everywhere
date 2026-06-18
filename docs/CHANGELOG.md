@@ -2,6 +2,14 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.5.0] - 2026-06-18
+
+### Added
+- add generic external-edit content-refresh receiver
+
+### Changed
+- migrate from yarn to npm
+
 ## [3.4.0] - 2026-06-06
 
 ### Added
