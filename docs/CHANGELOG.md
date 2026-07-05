@@ -2,6 +2,11 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.5.2] - 2026-07-05
+
+### Fixed
+- move fullscreen toggle into primary toolbar (drops redundant top-bar, fixes dark mode)
+
 ## [3.5.1] - 2026-07-05
 
 ### Fixed
