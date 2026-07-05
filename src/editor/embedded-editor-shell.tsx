@@ -31,19 +31,20 @@
  *
  * Public-API equivalent of `<VisualEditor>`:
  *
- *   <BlockTools>
- *     <WritingFlow>
- *       <ObserveTyping>
- *         <BlockCanvas height="100%" styles={ ... } />
- *       </ObserveTyping>
- *     </WritingFlow>
- *   </BlockTools>
+ *   <BlockCanvas height="100%" styles={ ... } />
  *
- * That stanza is the canvas composition BE has converged on after PRs #23,
- * #25, #26. It must be paired with `display: flex; flex-direction: column`
- * on `.blocks-everywhere-editor` and `flex: 1` on
- * `.blocks-everywhere-editor__body` so `height: 100%` resolves to the
- * remaining space below the toolbar. See `editor.scss`.
+ * `<BlockCanvas>` is self-contained: it renders its own `<BlockTools>`, the
+ * `<Iframe name="editor-canvas">`, and wires WritingFlow + keyboard-nav hooks
+ * to the editable content INSIDE the iframe. BE must NOT wrap it in a second
+ * `<BlockTools>`/`<WritingFlow>`/`<ObserveTyping>` — doing so attaches
+ * arrow-key handlers to the host document where the caret never lives, and
+ * left/right arrow navigation goes dead (a previous composition did exactly
+ * that; see the comment next to the `<BlockCanvas>` render below).
+ *
+ * The flex-height contract still holds: pass `height="100%"`, paired with
+ * `display: flex; flex-direction: column` on `.blocks-everywhere-editor` and
+ * `flex: 1` on `.blocks-everywhere-editor__body` so `height: 100%` resolves to
+ * the remaining space below the toolbar. See `editor.scss`.
  */
 
 /**
@@ -57,11 +58,8 @@ import type { ReactNode } from 'react';
 import {
 	BlockCanvas,
 	BlockEditorKeyboardShortcuts,
-	BlockTools,
 	BlockToolbar,
 	Inserter,
-	ObserveTyping,
-	WritingFlow,
 	// Gutenberg portability gap: List View reads from `core/block-editor` and is
 	// exactly the primitive BE needs, but Gutenberg only exports it as
 	// `__experimentalListView` today. BE keeps the setting stable while isolating
@@ -274,33 +272,30 @@ export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): 
 					<div className="blocks-everywhere-editor__body">
 						<BlockEditorKeyboardShortcuts />
 						<BlockEditorKeyboardShortcuts.Register />
-						<BlockTools>
-							<WritingFlow>
-								<ObserveTyping>
-									{ /*
-									 * `<BlockCanvas>` defaults `height` to `'300px'` (see
-									 * `@wordpress/block-editor/src/components/block-canvas/index.js`)
-									 * and sets that as an inline style on its wrapping
-									 * `<BlockTools>` div. The iframe inside
-									 * (`.block-editor-iframe__container` and
-									 * `.block-editor-iframe__scale-container`, both
-									 * `height: 100%`) then resolves to a hard 300px tall
-									 * canvas regardless of how much vertical room the host
-									 * gives BE.
-									 *
-									 * wp-admin's `<VisualEditor>` (and the old IBE
-									 * `visual-editor.js`) both pass `height="100%"` here
-									 * and rely on the editor wrapper being a flex column
-									 * so the canvas fills the remaining space below the
-									 * toolbar. We do the same: `height="100%"` here, paired
-									 * with `display: flex; flex-direction: column` on
-									 * `.blocks-everywhere-editor` and `flex: 1` on
-									 * `.blocks-everywhere-editor__body` (see editor.scss).
-									 */ }
-									<BlockCanvas height="100%" styles={ ( styles as never ) || [] } />
-								</ObserveTyping>
-							</WritingFlow>
-						</BlockTools>
+						{ /*
+						 * `<BlockCanvas>` owns the iframe + keyboard-nav wiring. It
+						 * renders its OWN `<BlockTools>`, the
+						 * `<Iframe name="editor-canvas">`, and binds WritingFlow +
+						 * useBlockSelectionClearer + useMouseMoveTypingReset to the
+						 * editable content INSIDE that iframe (its docblock says so
+						 * explicitly). BE must NOT wrap it in a second
+						 * `<BlockTools>`/`<WritingFlow>`/`<ObserveTyping>` — a prior
+						 * composition did, attaching arrow-key handlers to the host
+						 * document while the caret lives inside the iframe, so
+						 * left/right arrow navigation was dead (clicks still worked
+						 * because caret placement on click is native, not WritingFlow).
+						 *
+						 * `<BlockCanvas>` defaults `height` to `'300px'` (see
+						 * `@wordpress/block-editor/src/components/block-canvas/index.js`)
+						 * and sets it as an inline style on its internal wrapping
+						 * `<BlockTools>`. The iframe chain inside resolves to a hard
+						 * height unless we pass `height="100%"`, paired with
+						 * `display:flex; flex-direction:column` on
+						 * `.blocks-everywhere-editor` and `flex:1` on
+						 * `.blocks-everywhere-editor__body` (see editor.scss) so the
+						 * canvas fills the remaining space below the toolbar.
+						 */ }
+						<BlockCanvas height="100%" styles={ ( styles as never ) || [] } />
 					</div>
 					{ chrome.inserterSidebar && (
 						<aside className="blocks-everywhere-editor__sidebar blocks-everywhere-editor__sidebar--inserter">

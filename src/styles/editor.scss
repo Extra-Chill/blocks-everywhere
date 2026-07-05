@@ -64,6 +64,18 @@
 	border: 1px solid var(--border-color);
 	background-color: var(--background-color);
 
+	// Round the outer card frame and clip inner layers to it. Inner Gutenberg
+	// layers (toolbar bar, canvas) ship their own squared/rounded edges that
+	// otherwise bleed past this square 1px border, leaving the editor looking
+	// like an unframed stack instead of a single rounded card. `overflow:hidden`
+	// is safe here because every dropdown/popover in the shell (inserter, list
+	// view, format-link) portals to document.body via <Popover>, so nothing
+	// in-flow needs to escape the wrapper. The fullscreen variant below keeps
+	// `border-radius: 0` (edge-to-edge) and inherits overflow:hidden, which is
+	// correct for a fixed full-viewport surface.
+	border-radius: var(--border-radius, 6px);
+	overflow: hidden;
+
 	// Lay the editor shell out as a flex column so the canvas body can
 	// stretch to fill whatever vertical space the host gives BE. Without
 	// this, `.blocks-everywhere-editor__body` collapses to intrinsic
@@ -254,6 +266,30 @@
 	// double-border story; strip it.
 	.blocks-everywhere-editor__toolbar .components-toolbar {
 		border: 0;
+	}
+
+	// Inter-group divider (Bug 4). Inside <BlockToolbar>, Gutenberg renders
+	// adjacent `.components-toolbar-group`s (block mover up/down, then the
+	// format group bold/italic/etc). Each group ships a right-side divider:
+	//   .components-toolbar-group { border-right: 1px solid
+	//   var(--wp-components-color-foreground) }
+	// (in @wordpress/components build-style), plus an alternate divider via
+	// `div.components-toolbar > div + div.has-left-divider::before`.
+	// Between the mover and the format buttons that reads as dead space + a
+	// stray rule. Neutralize BOTH within BE's toolbar scope only — the bar
+	// itself is the only frame we want. Scoped to
+	// `.blocks-everywhere-editor__toolbar` so global toolbar separators are
+	// untouched.
+	.blocks-everywhere-editor__toolbar .components-toolbar-group {
+		border-right: 0;
+	}
+
+	.blocks-everywhere-editor__toolbar div.components-toolbar > div + div.has-left-divider {
+		margin-left: 0;
+	}
+
+	.blocks-everywhere-editor__toolbar div.components-toolbar > div + div.has-left-divider::before {
+		display: none;
 	}
 
 	// Font size fixes
