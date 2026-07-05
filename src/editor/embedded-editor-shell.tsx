@@ -178,7 +178,11 @@ export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): 
 	const { chrome, toolbar, styles, className, children } = props;
 	const [ localFullscreenActive, setLocalFullscreenActive ] = useState( chrome.fullscreen.defaultActive );
 	const fullscreenActive = chrome.fullscreen.enabled && resolveFullscreenActive( chrome, localFullscreenActive );
-	const hasTopBar = chrome.topBar || chrome.fullscreen.enabled;
+	// The top-bar is opt-in via `chrome.topBar` only. Fullscreen no longer
+	// forces a secondary top-bar into existence — the fullscreen toggle lives
+	// inside the primary toolbar (see below), so the top-bar is reserved for
+	// consumers who explicitly fill the `topBar` / `windowControls` slots.
+	const hasTopBar = chrome.topBar;
 	const editorClassName = [
 		'blocks-everywhere-editor',
 		'block-editor',
@@ -234,15 +238,6 @@ export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): 
 						<Slot name="blocks-everywhere/topBar" />
 						<div className="blocks-everywhere-editor__window-controls">
 							<Slot name="blocks-everywhere/windowControls" />
-							{ chrome.fullscreen.enabled && (
-								<Button
-									icon={ fullscreen }
-									label={ fullscreenActive ? __( 'Exit fullscreen' ) : __( 'Fullscreen' ) }
-									isPressed={ fullscreenActive }
-									onClick={ () => setFullscreenActive( ! fullscreenActive ) }
-									showTooltip
-								/>
-							) }
 						</div>
 					</div>
 				) }
@@ -256,6 +251,16 @@ export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): 
 						{ toolbar.blockTools && <BlockToolbar hideDragHandle /> }
 						<Slot name="blocks-everywhere/toolbar" />
 						<Slot name="blocks-everywhere/actions" />
+						{ chrome.fullscreen.enabled && (
+							<Button
+								className="blocks-everywhere-editor__fullscreen-toggle"
+								icon={ fullscreen }
+								label={ fullscreenActive ? __( 'Exit fullscreen' ) : __( 'Fullscreen' ) }
+								isPressed={ fullscreenActive }
+								onClick={ () => setFullscreenActive( ! fullscreenActive ) }
+								showTooltip
+							/>
+						) }
 					</div>
 				) }
 				{ chrome.secondaryToolbar && (
