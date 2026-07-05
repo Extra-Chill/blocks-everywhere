@@ -2,6 +2,11 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.5.1] - 2026-07-05
+
+### Fixed
+- block editor UX — arrow nav, border-radius, overscroll bg, toolbar gap, fullscreen
+
 ## [3.5.0] - 2026-06-18
 
 ### Added
