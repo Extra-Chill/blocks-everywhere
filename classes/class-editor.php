@@ -309,6 +309,11 @@ class Editor {
 			// Moved from src/styles/theme-compat.scss (which was being cloned into the iframe
 			// via the compat layer + console warning); now reaches the iframe via the canonical srcdoc path.
 			. "\n.editor-styles-wrapper{background-color:var(--background-color);color:var(--text-color);}"
+		// Paint the iframe document root so overscroll/rubber-band at the top or
+		// bottom of the canvas does not reveal the default white html/body
+		// background (jarring in dark mode). .editor-styles-wrapper covers the
+		// writing surface but not the document root behind it.
+		. "\nhtml,body{background-color:var(--background-color);}"
 			. "\n.editor-styles-wrapper .wp-block code{background-color:var(--card-background);padding-left:5px;padding-right:5px;}"
 			. "\n.editor-styles-wrapper ol.wp-block-list{margin-left:10px;}"
 			// In-iframe inserter popover/menu styling.
