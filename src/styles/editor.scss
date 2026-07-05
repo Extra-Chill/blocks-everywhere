@@ -292,6 +292,18 @@
 		display: none;
 	}
 
+	// Fullscreen toggle: push to the far right edge of the toolbar so it reads
+	// as a view-mode control (mirrors wp-admin's placement of view controls at
+	// the toolbar edge). The toolbar is `display: flex`, so `margin-left: auto`
+	// on the toggle absorbs all remaining horizontal space after the
+	// document/format tools and the action slot. Scoped here so the toggle
+	// inherits theme tokens (the toolbar carries `color: var(--text-color)`
+	// and lives under the `.gutenberg-support` token map above), which is what
+	// fixes the dark-mode regression.
+	.blocks-everywhere-editor__fullscreen-toggle {
+		margin-left: auto;
+	}
+
 	// Font size fixes
 	.block-editor-inserter__panel-header h2 {
 		font-size: 11px;
