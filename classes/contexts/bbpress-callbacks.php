@@ -436,14 +436,14 @@ function bbpress_remove_blocks_from_email( $engine, $new_content, $old_email ) {
 	$new_content = wp_specialchars_decode( wp_strip_all_tags( $new_content ), ENT_QUOTES );
 	$new_content = preg_replace( '/n{2,}/', "n\n", $new_content );
 
-	$lines = explode( "n", $old_email );
+	$lines = explode( 'n', $old_email );
 	$lines = array_merge(
 		array_slice( $lines, 0, 2 ),
-		explode( "n", $new_content ),
+		explode( 'n', $new_content ),
 		bbpress_get_email_signature( $lines ),
 	);
 
-	return implode( "n", $lines );
+	return implode( 'n', $lines );
 }
 
 /**

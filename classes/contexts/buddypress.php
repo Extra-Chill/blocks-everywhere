@@ -30,9 +30,13 @@ function buddypress_context( Engine $engine ) {
 	}
 
 	// Content display filter.
-	add_filter( 'bp_get_activity_content_body', function ( $content ) use ( $engine ) {
-		return $engine->do_blocks( $content, 'bp_get_activity_content_body' );
-	}, 8 );
+	add_filter(
+		'bp_get_activity_content_body',
+		function ( $content ) use ( $engine ) {
+			return $engine->do_blocks( $content, 'bp_get_activity_content_body' );
+		},
+		8
+	);
 
 	return [
 		'type'       => 'buddypress',
