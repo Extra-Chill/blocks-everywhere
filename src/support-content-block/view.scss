@@ -1,11 +1,14 @@
 
 .wp-block-blocks-everywhere-support-content {
+
 	&:not(:first-child) {
 		margin-top: 28px;
 	}
+
 	&:not(:last-child) {
 		margin-bottom: 28px;
 	}
+
 	.components-notice.is-error.is-dismissible {
 		padding-right: 0;
 	}
@@ -137,18 +140,20 @@
 }
 
 .be-support-content-block-icon {
+
 	&.is-margin-right {
 		margin-right: 10px;
 	}
 
 	svg,
 	svg * {
-		fill: currentColor;
-		stroke: currentColor;
+		fill: currentcolor;
+		stroke: currentcolor;
 	}
 }
 
 @keyframes be-support-content_skeleton__animation {
+
 	0% {
 		opacity: 0.5;
 	}

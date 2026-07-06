@@ -1,6 +1,7 @@
 // WordPress Component CSS Variable Mapping
-// Maps Gutenberg's component CSS variables to theme variables for dark mode compatibility.
-// This approach ensures all WP components automatically inherit theme colors.
+// Maps Gutenberg's component CSS variables to theme variables for dark mode
+// compatibility. This approach ensures all WP components automatically inherit
+// theme colors.
 .gutenberg-support {
 	// Core color mappings
 	// Audit 2026-05-26 (issue #31): every variable here is verified to be
@@ -10,8 +11,10 @@
 	// were dropped after the audit confirmed they are dead across the full
 	// @wordpress/* package set. Re-run the diff if upstream renames or adds
 	// component tokens in a Gutenberg minor:
-	//   comm -23 <(grep -oE -- "--wp-components-color-[a-z0-9-]+" src/styles/editor.scss | sort -u) \
-	//            <(grep -hoE -- "--wp-components-color-[a-z0-9-]+" node_modules/@wordpress/components/build-style/style.css | sort -u)
+	//   comm -23 <(grep -oE -- "--wp-components-color-[a-z0-9-]+" \
+	//     src/styles/editor.scss | sort -u) \
+	//     <(grep -hoE -- "--wp-components-color-[a-z0-9-]+" \
+	//       node_modules/@wordpress/components/build-style/style.css | sort -u)
 	--wp-components-color-foreground: var(--text-color);
 	--wp-components-color-foreground-inverted: var(--background-color);
 	--wp-components-color-background: var(--background-color);
@@ -34,13 +37,117 @@
 	--wp-components-color-gray-600: var(--muted-text);
 	--wp-components-color-gray-700: var(--text-color);
 	--wp-components-color-gray-800: var(--text-color);
+
+	// Popover and sidebar styles (elements that render to body)
+	// Note: In-canvas editor styles (inside iframe) are in class-editor.php as
+	// $iframe_editor_css
+	// Popover content backgrounds
+	.components-popover__content,
+	.block-editor-inserter__menu,
+	.block-editor-tabbed-sidebar {
+		background-color: var(--background-color);
+		border: 1px solid var(--border-color);
+		color: var(--wp-components-color-foreground);
+	}
+
+
+	// List View / Block Navigation popover (needs explicit border + row hover)
+	.components-popover.block-editor-block-navigation__popover .components-popover__content {
+		background-color: var(--background-color);
+		border: 1px solid var(--border-color);
+		color: var(--wp-components-color-foreground);
+	}
+
+	// List view tree rows can pick up WP blue selection; normalize to theme
+	// tokens.
+	.block-editor-list-view-tree .block-editor-list-view-block-select-button {
+		color: var(--text-color);
+
+		&:hover,
+		&:focus,
+		&:focus-visible {
+			background-color: var(--card-background);
+			color: var(--wp-components-color-accent);
+			box-shadow: inset 0 0 0 var(--wp-admin-border-width-focus) var(--wp-components-color-accent);
+		}
+	}
+
+	// Quick inserter popover (in-canvas and other "is-quick" contexts) can
+	// render icons black in dark mode.
+	.components-popover.block-editor-inserter__popover.is-quick {
+		color: var(--wp-components-color-foreground);
+
+		.components-search-control__icon,
+		.block-editor-inserter__quick-inserter svg,
+		.block-editor-inserter__quick-inserter svg *,
+		.block-editor-block-icon,
+		.block-editor-block-icon.has-colors {
+			color: var(--wp-components-color-icon);
+			fill: currentcolor;
+		}
+
+		svg [stroke]:not([stroke="none"]) {
+			stroke: currentcolor;
+		}
+	}
+
+	// Tabbed sidebar border
+	.block-editor-tabbed-sidebar__tablist-and-close-button {
+		border-bottom: 1px solid var(--border-color);
+	}
+
+	// Close icons/buttons inside inserter/menu should inherit theme color
+	.block-editor-inserter__menu .components-button.has-icon,
+	.components-popover__content .components-button.has-icon {
+		background: transparent;
+		color: var(--wp-components-color-icon);
+
+		&:hover,
+		&:focus,
+		&:focus-visible {
+			background-color: var(--card-background);
+		}
+	}
+
+	// Broader-scope icon theming for the inserter menu and popovers; the
+	// quick-inserter popover rule above wins by higher specificity, not
+	// source order.
+	/* stylelint-disable no-descending-specificity */
+	.block-editor-inserter__menu .components-button.has-icon svg,
+	.block-editor-inserter__menu .components-button.has-icon svg *,
+	.components-popover__content .components-button.has-icon svg,
+	.components-popover__content .components-button.has-icon svg * {
+		color: var(--wp-components-color-icon);
+		fill: currentcolor;
+	}
+	/* stylelint-enable no-descending-specificity */
+
+	.block-editor-inserter__menu .components-button.has-icon svg [stroke]:not([stroke="none"]),
+	.components-popover__content .components-button.has-icon svg [stroke]:not([stroke="none"]) {
+		stroke: currentcolor;
+	}
+
+	// Active tab indicator
+	.block-editor-tabbed-sidebar__tab {
+
+		&[aria-selected="true"],
+		&[data-active-item="true"] {
+			color: var(--accent);
+		}
+	}
+
+	// Side-inserter popover border; the block-navigation popover rule above
+	// wins by higher specificity, not source order.
+	/* stylelint-disable-next-line no-descending-specificity */
+	.block-editor-block-list__block-side-inserter-popover > .components-popover__content {
+		border: 0;
+	}
 }
 
 // Outer PHP-rendered wrapper (`<div class="blocks-everywhere ...">` from
 // classes/class-handler.php::the_editor). Establish a flex column so
 // `.blocks-everywhere-editor` (the React shell mounted inside) can
 // `flex: 1` upward into whatever height the host gives us.
-//
 // Default `min-height: 400px` gives an empty editor a sensible writing
 // surface when no host parent constrains BE (the bbPress reply form is
 // grid-sized by its template, but doesn't enforce a useful minimum on
@@ -191,12 +298,14 @@
 	// the empty-block placeholder, ~80px tall). The 400px floor here is
 	// the same kind of "sensible empty-state height" that wp-admin's
 	// post editor gives via `.editor-visual-editor { min-height: ... }`.
-	//
 	// Selector is intentionally low specificity. Consumers override via
 	// their own parent-scoped declaration without `!important`:
 	//   .my-context .blocks-everywhere-editor iframe[name="editor-canvas"] {
 	//       min-height: 200px;
 	//   }
+	// General canvas iframe default; the compact variant above overrides via
+	// higher specificity, not source order, so this ordering is cosmetic.
+	/* stylelint-disable-next-line no-descending-specificity */
 	iframe[name="editor-canvas"] {
 		box-sizing: border-box;
 		display: block;
@@ -208,15 +317,14 @@
 	// Keep theme background + separator on the BE toolbar bar.
 	// Lay out the toolbar contents on a single row. The toolbar div is a
 	// flat container for any combination of:
-	//   - <Toolbar label="Document tools"> wrapping inserter / undo / redo / list-view
-	//     (.components-accessible-toolbar — see editor/index.tsx)
+	//   - <Toolbar label="Document tools"> wrapping inserter / undo / redo /
+	//     list-view (.components-accessible-toolbar — see editor/index.tsx)
 	//   - <BlockToolbar /> block format buttons (only when a block is selected)
 	//   - host-page slot fills (blocks-everywhere/heading, /toolbar)
 	// Without an explicit flex layout, each child stacks block-level — the
 	// document tools group ends up on its own row above the format buttons,
 	// which doesn't match upstream Gutenberg's single-row toolbar shape. IBE
 	// used to provide this via its InterfaceSkeleton wrapper (dropped in #6).
-	//
 	// `min-height: 48px` matches the canonical toolbar-button contract
 	// (see `@wordpress/components/build-style/style.css` lines 3789-3848:
 	// `.components-accessible-toolbar .components-button { height: 48px }`).
@@ -225,6 +333,9 @@
 	// `border-bottom` look glued to the buttons. An explicit min-height
 	// guarantees the bar matches its 48px children even before any
 	// toolbar primitives have mounted.
+	// General toolbar styling; the compact toolbar override above wins by
+	// higher specificity, not source order.
+	/* stylelint-disable-next-line no-descending-specificity */
 	.blocks-everywhere-editor__toolbar {
 		display: flex;
 		align-items: center;
@@ -320,11 +431,12 @@
 	// Icon hover highlight
 	.block-editor-block-types-list__list-item:hover span {
 		color: var(--accent);
-		fill: currentColor;
+		fill: currentcolor;
 	}
 
 	// List block spacing fixes
 	.block-editor-writing-flow [data-type="core/list"] {
+
 		ul {
 			margin-top: 0.5em;
 			margin-bottom: 0.5em;
@@ -340,6 +452,10 @@
 	}
 
 	.block-editor-writing-flow {
+
+		// General nested-list margin; the core/list-scoped rule above wins by
+		// higher specificity, not source order.
+		/* stylelint-disable-next-line no-descending-specificity */
 		ul > li > ul {
 			margin-left: 0;
 		}
@@ -350,104 +466,10 @@
 	overflow: hidden;
 }
 
-// Popover and sidebar styles (elements that render to body)
-// Note: In-canvas editor styles (inside iframe) are in class-editor.php as $iframe_editor_css
-.gutenberg-support {
-	// Popover content backgrounds
-	.components-popover__content,
-	.block-editor-inserter__menu,
-	.block-editor-tabbed-sidebar {
-		background-color: var(--background-color);
-		border: 1px solid var(--border-color);
-		color: var(--wp-components-color-foreground);
-	}
-
-
-	// List View / Block Navigation popover (needs explicit border + row hover)
-	.components-popover.block-editor-block-navigation__popover .components-popover__content {
-		background-color: var(--background-color);
-		border: 1px solid var(--border-color);
-		color: var(--wp-components-color-foreground);
-	}
-
-	// List view tree rows can pick up WP blue selection; normalize to theme tokens.
-	.block-editor-list-view-tree .block-editor-list-view-block-select-button {
-		color: var(--text-color);
-
-		&:hover,
-		&:focus,
-		&:focus-visible {
-			background-color: var(--card-background);
-			color: var(--wp-components-color-accent);
-			box-shadow: inset 0 0 0 var(--wp-admin-border-width-focus) var(--wp-components-color-accent);
-		}
-	}
-
-	// Quick inserter popover (in-canvas and other "is-quick" contexts) can render icons black in dark mode.
-	.components-popover.block-editor-inserter__popover.is-quick {
-		color: var(--wp-components-color-foreground);
-
-		.components-search-control__icon,
-		.block-editor-inserter__quick-inserter svg,
-		.block-editor-inserter__quick-inserter svg *,
-		.block-editor-block-icon,
-		.block-editor-block-icon.has-colors {
-			color: var(--wp-components-color-icon);
-			fill: currentColor;
-		}
-
-		svg [stroke]:not([stroke="none"]) {
-			stroke: currentColor;
-		}
-	}
-
-	// Tabbed sidebar border
-	.block-editor-tabbed-sidebar__tablist-and-close-button {
-		border-bottom: 1px solid var(--border-color);
-	}
-
-	// Close icons/buttons inside inserter/menu should inherit theme color
-	.block-editor-inserter__menu .components-button.has-icon,
-	.components-popover__content .components-button.has-icon {
-		background: transparent;
-		color: var(--wp-components-color-icon);
-
-		&:hover,
-		&:focus,
-		&:focus-visible {
-			background-color: var(--card-background);
-		}
-	}
-
-	.block-editor-inserter__menu .components-button.has-icon svg,
-	.block-editor-inserter__menu .components-button.has-icon svg *,
-	.components-popover__content .components-button.has-icon svg,
-	.components-popover__content .components-button.has-icon svg * {
-		color: var(--wp-components-color-icon);
-		fill: currentColor;
-	}
-
-	.block-editor-inserter__menu .components-button.has-icon svg [stroke]:not([stroke="none"]),
-	.components-popover__content .components-button.has-icon svg [stroke]:not([stroke="none"]) {
-		stroke: currentColor;
-	}
-
-	// Active tab indicator
-	.block-editor-tabbed-sidebar__tab {
-		&[aria-selected="true"],
-		&[data-active-item="true"] {
-			color: var(--accent);
-		}
-	}
-
-	// Block side inserter popover should not have a visible border
-	.block-editor-block-list__block-side-inserter-popover > .components-popover__content {
-		border: 0;
-	}
-}
 
 // Fix Gutenberg issues when media upload is disabled
 body:not(.gutenberg-support-upload) {
+
 	.block-editor-media-flow__url-input {
 		margin-top: 0;
 		border-top: none;
@@ -469,6 +491,10 @@ body:not(.gutenberg-support-upload) {
 // under .blocks-everywhere-editor therefore misses the detached case.
 // Scope to body.gutenberg-support so the rules apply regardless of
 // where the inserter renders.
+// Detached-sidebar-safe inserter icon theming; these broader-scope rules
+// are intentionally placed here and the quick-inserter popover rule above
+// wins by higher specificity, not source order.
+/* stylelint-disable no-descending-specificity */
 .gutenberg-support .block-editor-inserter__menu .block-editor-block-types-list__item-icon,
 .gutenberg-support .block-editor-inserter__menu .block-editor-block-patterns-list__item-icon,
 .gutenberg-support .block-editor-inserter__menu .block-editor-block-types-list__item svg,
@@ -480,19 +506,21 @@ body:not(.gutenberg-support-upload) {
 .gutenberg-support .block-editor-inserter__menu button[aria-label="Close"] svg,
 .gutenberg-support .block-editor-inserter__menu button[aria-label="Close"] svg * {
 	color: var(--wp-components-color-icon);
-	fill: currentColor;
+	fill: currentcolor;
 }
 
 .gutenberg-support .block-editor-inserter__menu svg [stroke]:not([stroke="none"]) {
-	stroke: currentColor;
+	stroke: currentcolor;
 }
+/* stylelint-enable no-descending-specificity */
 
 // ── Block preview popover (hover-preview in the inserter) ──
 // Renders inside .block-editor-inserter__preview-container__popover, which
 // Gutenberg portals to document.body. Without theming:
-//   - .block-editor-block-card { color: #1e1e1e } → invisible block-card icon in dark mode
-//   - .block-editor-inserter__preview-content { background: #f0f0f0 } → huge light-gray
-//     panel inside the dark popover
+//   - .block-editor-block-card { color: #1e1e1e } → invisible block-card
+//     icon in dark mode
+//   - .block-editor-inserter__preview-content { background: #f0f0f0 } → huge
+//     light-gray panel inside the dark popover
 // Both are body-scoped so they apply even when the inserter is detached.
 .gutenberg-support .block-editor-inserter__preview-container__popover,
 .gutenberg-support .block-editor-inserter__preview-container {
@@ -513,22 +541,26 @@ body:not(.gutenberg-support-upload) {
 		padding: 0;
 	}
 
+	// Preview-popover icon/svg theming; the quick-inserter popover rule
+	// above wins by higher specificity, not source order.
+	/* stylelint-disable no-descending-specificity */
 	.block-editor-block-icon,
 	.block-editor-block-icon.has-colors,
 	.block-editor-block-card .block-editor-block-icon,
 	.block-editor-block-card__child-indicator-icon {
 		color: var(--wp-components-color-icon);
-		fill: currentColor;
+		fill: currentcolor;
 	}
 
 	svg,
 	svg * {
-		fill: currentColor;
+		fill: currentcolor;
 	}
 
 	svg [stroke]:not([stroke="none"]) {
-		stroke: currentColor;
+		stroke: currentcolor;
 	}
+	/* stylelint-enable no-descending-specificity */
 
 	// The actual block-render preview area and its empty/missing-preview
 	// fallback both ship with hardcoded light-gray backgrounds. In dark
@@ -544,13 +576,13 @@ body:not(.gutenberg-support-upload) {
 .gutenberg-support .components-toolbar-button.is-active,
 .gutenberg-support .components-toolbar-button.is-pressed,
 .gutenberg-support .components-toolbar-button[aria-pressed="true"] {
-    background-color: var(--wp-components-color-gray-100);
-    color: var(--wp-components-color-foreground);
-    border-color: var(--wp-components-color-accent);
+	background-color: var(--wp-components-color-gray-100);
+	color: var(--wp-components-color-foreground);
+	border-color: var(--wp-components-color-accent);
 }
 
 // Toolbar button pressed state ::before pseudo-element fix
 .gutenberg-support .components-accessible-toolbar .components-button.is-pressed::before,
 .gutenberg-support .components-toolbar .components-button.is-pressed::before {
-    background-color: var(--wp-components-color-gray-100);
+	background-color: var(--wp-components-color-gray-100);
 }

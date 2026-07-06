@@ -1,4 +1,4 @@
-@use 'sass:meta';
+@use "sass:meta";
 
 // General CSS
 .blocks-everywhere {
@@ -10,6 +10,7 @@
 	}
 
 	&.blocks-everywhere--error {
+
 		> textarea {
 			display: block;
 		}
@@ -25,7 +26,7 @@
 	border-color: var(--wp-components-color-gray-300);
 }
 
-@include meta.load-css( './buddypress.scss' );
-@include meta.load-css( './comments.scss' );
-@include meta.load-css( './bbpress.scss' );
-@include meta.load-css( './editor.scss' );
+@include meta.load-css( "./buddypress" );
+@include meta.load-css( "./comments" );
+@include meta.load-css( "./bbpress" );
+@include meta.load-css( "./editor" );

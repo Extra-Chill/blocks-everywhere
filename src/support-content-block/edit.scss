@@ -1,105 +1,103 @@
 
 .be-support-content-placeholder {
-  .components-placeholder__input[type="url"].components-placeholder__input {
-    margin: 0 8px 0 0;
-  }
 
-  .components-notice-list .components-notice__content {
-    margin: 4px 25px 4px 0;
-  }
+	.components-placeholder__input[type="url"].components-placeholder__input {
+		margin: 0 8px 0 0;
+	}
 
-  &__search-slot {
-    flex-basis: 100%;
-    position: relative;
-  }
+	.components-notice-list .components-notice__content {
+		margin: 4px 25px 4px 0;
+	}
+
+	&__search-slot {
+		flex-basis: 100%;
+		position: relative;
+	}
 }
 
 .be-support-content-confirm-anchor {
-  position: relative;
+	position: relative;
 }
 
 .be-support-content-confirm-content {
-  padding: 12px;
-  background: var(--card-background);
+	padding: 12px;
+	background: var(--card-background);
 
-  button.is-tertiary {
-    padding: 6px 12px;
-  }
+	button.is-tertiary {
+		padding: 6px 12px;
+	}
 
-  .components-menu-item__button.be-support-content-confirm-content__item {
-    font-family: var(--font-family-body);
-    font-weight: 400;
-    font-size: var(--font-size-sm);
-    color: var(--muted-text);
-  }
+	.components-menu-item__button.be-support-content-confirm-content__item {
+		font-family: var(--font-family-body);
+		font-weight: 400;
+		font-size: var(--font-size-sm);
+		color: var(--muted-text);
+	}
 
-  .components-menu-item__button.be-support-content-confirm-content__item:hover {
-    box-shadow: inset 0 0 0 1px var(--muted-text);
-  }
+	.components-menu-item__button.be-support-content-confirm-content__item:hover {
+		box-shadow: inset 0 0 0 1px var(--muted-text);
+	}
 
-  .components-menu-item__button.be-support-content-confirm-content__item.is-destructive {
-    color: var(--error-color);
-  }
+	.components-menu-item__button.be-support-content-confirm-content__item.is-destructive {
+		color: var(--error-color);
+	}
 
-  .components-menu-item__button.be-support-content-confirm-content__item.is-destructive:hover {
-    box-shadow: inset 0 0 0 1px var(--error-color);
-  }
+	.components-menu-item__button.be-support-content-confirm-content__item.is-destructive:hover {
+		box-shadow: inset 0 0 0 1px var(--error-color);
+	}
 }
 
 .be-support-content-search-results {
-  padding: 10px;
-  background-color: var(--background-color);
+	padding: 10px;
+	background-color: var(--background-color);
 
-  border: 1px solid var(--border-color);
-  box-shadow: var(--card-shadow);
-  border-radius: 2px;
+	border: 1px solid var(--border-color);
+	box-shadow: var(--card-shadow);
+	border-radius: 2px;
 
-  position: absolute;
-  left: 0;
-  top: 12px;
-  width: 100%;
+	position: absolute;
+	left: 0;
+	top: 12px;
+	width: 100%;
 
-  z-index: 10000;
+	z-index: 10000;
 
-  &__loading {
-    display: flex;
-  }
+	&__loading {
+		display: flex;
+	}
 
-  &__list {
-  }
+	&__item {
+		padding: 10px 20px;
+		cursor: pointer;
 
-  &__item {
-    padding: 10px 20px;
-    cursor: pointer;
+		&:hover {
+			background-color: var(--card-background);
+		}
+	}
 
-    &:hover {
-      background-color: var(--card-background);
-    }
-  }
+	&__title {
+		font-family: var(--font-family-body);
+		font-style: normal;
+		font-weight: 500;
+		font-size: var(--font-size-base);
+		line-height: 24px;
 
-  &__title {
-    font-family: var(--font-family-body);
-    font-style: normal;
-    font-weight: 500;
-    font-size: var(--font-size-base);
-    line-height: 24px;
+		overflow: hidden;
+		display: block;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
-    overflow: hidden;
-    display: block;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+	&__link {
+		font-family: var(--font-family-body);
+		font-style: normal;
+		font-weight: 400;
+		font-size: var(--font-size-sm);
+		line-height: 20px;
 
-  &__link {
-    font-family: var(--font-family-body);
-    font-style: normal;
-    font-weight: 400;
-    font-size: var(--font-size-sm);
-    line-height: 20px;
-
-    overflow: hidden;
-    display: block;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+		overflow: hidden;
+		display: block;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 }

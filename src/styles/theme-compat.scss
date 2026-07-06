@@ -3,6 +3,7 @@
 }
 
 .gutenberg-support #bbpress-forums fieldset.bbp-form {
+
 	.components-dropdown__content button.components-button,
 	.block-editor-block-switcher__popover button.components-button {
 		padding: 6px 8px 6px 8px;
@@ -25,7 +26,7 @@
 		height: inherit;
 		min-height: inherit;
 		padding: 6px 8px;
-		margin: 0px;
+		margin: 0;
 		outline: inherit;
 		border: 1px solid var(--border-color);
 		outline-color: inherit;
@@ -49,6 +50,7 @@
 	}
 
 	.components-panel__body-title {
+
 		button.components-button {
 			font-weight: 500;
 			padding: 16px 48px 16px 16px;
@@ -146,21 +148,31 @@
 }
 
 .gutenberg-support .blocks-everywhere {
+
+	// Button font-size; the bbPress form-scoped rule above wins by higher
+	// specificity, not source order.
+	/* stylelint-disable-next-line no-descending-specificity */
 	button.components-button:not(.is-small) {
 		font-size: 13px;
 	}
 
+	// Default button background/color; the bbPress form-scoped media-flow rule
+	// above wins by higher specificity, not source order.
+	/* stylelint-disable-next-line no-descending-specificity */
 	button:not(:hover):not(:active):not(.block-editor-list-view-block__menu):not(.has-background):not(.block-editor-inserter__toggle):not(.is-primary):not(.is-pressed):not(.block-list-appender__toggle) {
 		background-color: none;
 		color: var(--text-color);
 	}
 
+	// Dropdown-menu popover button padding; the bbPress form-scoped rule
+	// above wins by higher specificity, not source order.
+	/* stylelint-disable-next-line no-descending-specificity */
 	.components-dropdown-menu__popover button.components-button {
 		padding: 12px 10px;
 	}
 
 	.components-tools-panel .components-dropdown-menu__toggle.components-button {
-		padding: 0px;
+		padding: 0;
 	}
 
 	/* Block inserter is too high z-index */
@@ -168,8 +180,9 @@
 		z-index: 100;
 	}
 
-	// .editor-styles-wrapper rules moved to classes/class-editor.php::get_iframe_canvas_css()
-	// so they reach the iframe via the canonical editor_settings['styles'][] path
+	// .editor-styles-wrapper rules moved to
+	// classes/class-editor.php::get_iframe_canvas_css() so they reach the
+	// iframe via the canonical editor_settings['styles'][] path
 	// instead of the iframe-compat clone, which produced a console warning for
 	// every host stylesheet matching .editor-styles-wrapper/.wp-block selectors.
 }
@@ -179,15 +192,13 @@ body:not(.gutenberg-support-upload) {
 	.block-editor-block-toolbar button[aria-label="Upload external image"] {
 		display: none;
 	}
-}
 
-body:not(.gutenberg-support-upload) {
 	.block-editor-media-placeholder .components-placeholder__instructions {
 		visibility: hidden;
 		position: relative;
 	}
 
-	.block-editor-media-placeholder .components-placeholder__instructions:after {
+	.block-editor-media-placeholder .components-placeholder__instructions::after {
 		content: "Add an image with a URL.";
 		visibility: visible;
 		position: absolute;
@@ -230,6 +241,7 @@ body:not(.gutenberg-support-upload) {
 }
 
 .entry-content .blocks-everywhere {
+
 	h2 {
 		margin: inherit;
 	}
@@ -241,6 +253,9 @@ body:not(.gutenberg-support-upload) {
 	}
 }
 
+// Functional bbPress/bbcode DOM ID rendered server-side; must match the
+// upstream markup verbatim, so it cannot be renamed to hyphen-case.
+/* stylelint-disable-next-line selector-id-pattern */
 #bbcode_buttons {
 	display: none;
 }
