@@ -2,6 +2,12 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.5.3] - 2026-07-06
+
+### Changed
+- resolve all phpcs violations in PHP sources
+- resolve all stylelint violations in SCSS sources
+
 ## [3.5.2] - 2026-07-05
 
 ### Fixed
