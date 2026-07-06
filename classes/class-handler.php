@@ -383,9 +383,9 @@ abstract class Handler {
 				'blockVariations' => [
 					'disallow' => [],
 				],
-			'chrome' => [
-				'fullscreen' => true,
-			],
+				'chrome' => [
+					'fullscreen' => true,
+				],
 				'moreMenu' => false,
 				'sidebar' => [
 					'inserter' => false,

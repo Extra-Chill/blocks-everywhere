@@ -24,29 +24,44 @@ function comments_context( Engine $engine ) {
 	}
 
 	// Comment form container.
-	add_filter( 'comment_form_defaults', function ( $defaults ) {
-		$defaults['class_container'] .= ' gutenberg-comments';
-		$defaults['comment_field']   .= '<div class="blocks-everywhere blocks-everywhere-editor__loading"></div>';
-		return $defaults;
-	} );
+	add_filter(
+		'comment_form_defaults',
+		function ( $defaults ) {
+			$defaults['class_container'] .= ' gutenberg-comments';
+			$defaults['comment_field']   .= '<div class="blocks-everywhere blocks-everywhere-editor__loading"></div>';
+			return $defaults;
+		}
+	);
 
 	// Content display filter.
-	add_filter( 'comment_text', function ( $content ) use ( $engine ) {
-		return $engine->do_blocks( $content, 'comment_text' );
-	}, 8 );
+	add_filter(
+		'comment_text',
+		function ( $content ) use ( $engine ) {
+			return $engine->do_blocks( $content, 'comment_text' );
+		},
+		8
+	);
 
 	// Pre-save block removal.
-	add_filter( 'pre_comment_content', function ( $content ) use ( $engine ) {
-		return $engine->remove_blocks( $content );
-	} );
+	add_filter(
+		'pre_comment_content',
+		function ( $content ) use ( $engine ) {
+			return $engine->remove_blocks( $content );
+		}
+	);
 
 	// KSES for comments.
-	add_filter( 'wp_kses_allowed_html', function ( $tags, $context ) use ( $engine ) {
-		if ( 'pre_comment_content' === $context ) {
-			$tags = $engine->get_kses_for_allowed_blocks( $tags );
-		}
-		return $tags;
-	}, 10, 2 );
+	add_filter(
+		'wp_kses_allowed_html',
+		function ( $tags, $context ) use ( $engine ) {
+			if ( 'pre_comment_content' === $context ) {
+				$tags = $engine->get_kses_for_allowed_blocks( $tags );
+			}
+			return $tags;
+		},
+		10,
+		2
+	);
 
 	return [
 		'type'       => 'comments',
