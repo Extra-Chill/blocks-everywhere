@@ -75,6 +75,9 @@ function bbpress_context( Engine $engine ) {
 			$can_load = apply_filters( 'blocks_everywhere_bbpress_editor', true );
 			return $can_load || bbpress_is_editing_blocks();
 		},
+		'oembed_permission' => function () {
+			return current_user_can( 'publish_topics' ) || current_user_can( 'publish_replies' );
+		},
 		'settings_provider' => function ( $settings ) {
 			$settings['bbpress'] = [
 				'topicId'     => bbpress_get_current_topic_id(),
