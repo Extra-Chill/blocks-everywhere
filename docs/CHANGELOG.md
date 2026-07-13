@@ -2,6 +2,11 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.5.4] - 2026-07-13
+
+### Fixed
+- authorize embeds for portable context authors
+
 ## [3.5.3] - 2026-07-06
 
 ### Changed
