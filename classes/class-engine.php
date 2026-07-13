@@ -14,6 +14,7 @@
  *         'container'             => '.blocks-everywhere', // CSS selector for editor container
  *         'trigger'               => 'wp',                 // Action hook that triggers editor load
  *         'condition'             => fn() => is_user_logged_in(),
+ *         'oembed_permission'     => fn($request) => current_user_can('create_content'),
  *         'settings_provider'     => fn($settings, $engine) => $settings,
  *         'mode'                  => 'compact',              // Generic editor mode or ordered mode list.
  *         'modes'                 => [                       // Mode names to client-side settings patches.
@@ -111,7 +112,77 @@ class Engine extends Handler {
 			);
 		}
 
+		add_filter( 'rest_endpoints', [ $this, 'add_context_oembed_permissions' ] );
 		add_action( 'admin_enqueue_scripts', [ $this, 'admin_enqueue_scripts' ] );
+	}
+
+	/**
+	 * Extend core's oEmbed proxy permission with explicit editor context callbacks.
+	 *
+	 * Core limits this endpoint to `edit_posts`, which excludes valid authors in
+	 * portable contexts such as forums. The original callback remains authoritative
+	 * unless a registered context permits the request for a built-in provider.
+	 *
+	 * @param array $endpoints Registered REST API endpoints.
+	 * @return array
+	 */
+	public function add_context_oembed_permissions( $endpoints ) {
+		if ( empty( $endpoints['/oembed/1.0/proxy'] ) || ! is_array( $endpoints['/oembed/1.0/proxy'] ) ) {
+			return $endpoints;
+		}
+
+		foreach ( $endpoints['/oembed/1.0/proxy'] as &$handler ) {
+			$callback = $handler['callback'] ?? null;
+			if (
+				! is_array( $callback )
+				|| ! is_a( $callback[0] ?? null, '\\WP_oEmbed_Controller' )
+				|| 'get_proxy_item' !== ( $callback[1] ?? null )
+			) {
+				continue;
+			}
+
+			$permission_callback = $handler['permission_callback'] ?? null;
+			if ( ! is_callable( $permission_callback ) ) {
+				continue;
+			}
+
+			$handler['permission_callback'] = function ( $request ) use ( $permission_callback ) {
+				$permission = call_user_func( $permission_callback, $request );
+				if ( true === $permission || $this->context_can_proxy_oembed( $request ) ) {
+					return true;
+				}
+
+				return $permission;
+			};
+		}
+		unset( $handler );
+
+		return $endpoints;
+	}
+
+	/**
+	 * Check whether a context author may proxy a built-in oEmbed provider.
+	 *
+	 * Discovery remains unavailable to context-only authors so the permission
+	 * extension cannot turn arbitrary URLs into server-side discovery requests.
+	 *
+	 * @param \WP_REST_Request $request REST request instance.
+	 * @return bool
+	 */
+	private function context_can_proxy_oembed( $request ) {
+		$url = $request->get_param( 'url' );
+		if ( ! is_string( $url ) || ! _wp_oembed_get_object()->get_provider( $url, [ 'discover' => false ] ) ) {
+			return false;
+		}
+
+		foreach ( $this->contexts as $id => $config ) {
+			$permission = $config['oembed_permission'] ?? null;
+			if ( is_callable( $permission ) && true === call_user_func( $permission, $request, $this, $id, $config ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

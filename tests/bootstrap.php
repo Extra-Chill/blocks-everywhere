@@ -87,7 +87,19 @@ function has_filter() {
 }
 
 function current_user_can( $cap ) {
-	return false;
+	$allcaps = apply_filters( 'user_has_cap', (array) ( $GLOBALS['__current_user_caps'] ?? [] ), [ $cap ], [], null );
+	return ! empty( $allcaps[ $cap ] );
+}
+
+function _wp_oembed_get_object() {
+	return new class() {
+		public function get_provider( $url, $args ) {
+			unset( $args );
+			return preg_match( '#^https://(?:www\.)?youtube\.com/(?:watch|shorts)/?#', $url )
+				? 'https://www.youtube.com/oembed'
+				: false;
+		}
+	};
 }
 
 function bbp_kses_allowed_tags() {
