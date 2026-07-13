@@ -5,7 +5,7 @@ use PHPUnit\Framework\TestCase;
 // phpcs:ignore
 class Pattern_Settings_Test extends TestCase {
 	public function test_pattern_settings_are_exposed_to_native_gutenberg() {
-		$source = file_get_contents( dirname( __DIR__ ) . '/src/editor/index.tsx' );
+		$source = file_get_contents( dirname( __DIR__ ) . '/src/editor/settings.ts' );
 		$docs   = file_get_contents( dirname( __DIR__ ) . '/docs/portable-editor-adapters.md' );
 		$types  = file_get_contents( dirname( __DIR__ ) . '/types.d.ts' );
 
