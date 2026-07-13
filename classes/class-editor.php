@@ -3,6 +3,7 @@
 namespace Automattic\Blocks_Everywhere;
 
 use WP_Block_Editor_Context;
+use WP_Block_Type_Registry;
 use WP_Theme_JSON_Data;
 use WP_Theme_JSON_Data_Gutenberg;
 
@@ -75,6 +76,8 @@ class Editor {
 			],
 		];
 
+		// Current Core stubs always expose update_with(), but older supported Core versions do not.
+		// @phpstan-ignore-next-line function.alreadyNarrowedType
 		if ( method_exists( $json, 'update_with' ) ) {
 			$json->update_with( $data );
 			return $json;
@@ -558,7 +561,7 @@ class Editor {
 		wp_styles()->do_items( $style_handles );
 		wp_styles()->done = $done;
 
-		$styles = ob_get_clean();
+		$styles = (string) ob_get_clean();
 
 		$script_handles = array_unique( apply_filters( 'blocks_everywhere_editor_scripts', $script_handles ) );
 		$done           = wp_scripts()->done;
@@ -569,7 +572,7 @@ class Editor {
 		wp_scripts()->do_items( $script_handles );
 		wp_scripts()->done = $done;
 
-		$scripts = ob_get_clean();
+		$scripts = (string) ob_get_clean();
 
 		return [
 			'styles'  => $styles,

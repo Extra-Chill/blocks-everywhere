@@ -30,6 +30,8 @@ abstract class Handler {
 
 	/**
 	 * Whether the assets have been registered already.
+	 *
+	 * @var bool
 	 */
 	public static $registered_assets = false;
 
@@ -132,7 +134,8 @@ abstract class Handler {
 		return '<div class="blocks-everywhere blocks-everywhere-editor__loading wp-exclude-emoji">' . $editor . '</div>';
 	}
 
-	public function wp_editor_settings( $settings ) {
+	public function wp_editor_settings( $settings, $editor_id = '' ) {
+		unset( $editor_id );
 		$settings['tinymce'] = false;
 		$settings['quicktags'] = false;
 		return $settings;
@@ -472,6 +475,7 @@ abstract class Handler {
 
 		// Pre-populate the groups array to ensure scripts stay in the footer.
 		global $wp_scripts;
+		/** @var \WP_Scripts|null $wp_scripts */
 		if ( isset( $wp_scripts ) ) {
 			$footer_scripts = [
 				'blocks-everywhere',
@@ -617,7 +621,7 @@ abstract class Handler {
 		}
 
 		if ( defined( '__EXPERIMENTAL_DYNAMIC_LOAD' ) && 'blocks-everywhere' === $name ) {
-			WP_Enqueue_Dynamic_Script::enqueue_script( $name );
+			\WP_Enqueue_Dynamic_Script::enqueue_script( $name );
 		} else {
 			wp_enqueue_script( $name );
 		}
