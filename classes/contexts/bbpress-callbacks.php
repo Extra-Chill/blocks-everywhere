@@ -15,6 +15,8 @@
 
 namespace Automattic\Blocks_Everywhere\Contexts;
 
+use Automattic\Blocks_Everywhere\Engine;
+
 /**
  * Runs before bbp_encode_bad — converts &lt;/&gt; into square bracket format
  * to protect them from bbPress encoding. Restored by bbpress_allow_comments_post.
@@ -38,7 +40,7 @@ function bbpress_allow_comments_pre( $content ) {
 function bbpress_allow_comments_post( $content ) {
 	$filter = current_filter();
 
-	if ( has_filter( $filter, 'bbp_encode_bad' ) ) {
+	if ( is_string( $filter ) && has_filter( $filter, 'bbp_encode_bad' ) ) {
 		$content = preg_replace( bbpress_get_markup_regex( '&lt;', '&gt;' ), '<!--$1-->', $content );
 	}
 
@@ -88,7 +90,7 @@ function bbpress_normalize_wp_embed_iframe_secrets( $content ) {
 
 	return preg_replace_callback(
 		'/<iframe\b[^>]*\bclass="[^"]*\bwp-embedded-content\b[^"]*"[^>]*>/i',
-		function ( $matches ) {
+		function ( array $matches ) {
 			$iframe_tag = $matches[0];
 
 			if ( ! preg_match( '/\bdata-secret="([^"]+)"/i', $iframe_tag, $secret_match ) ) {
@@ -105,7 +107,7 @@ function bbpress_normalize_wp_embed_iframe_secrets( $content ) {
 
 			$normalized_src = $base . '#?secret=' . $secret;
 
-			return preg_replace(
+			return (string) preg_replace(
 				'/\bsrc="[^"]+"/i',
 				'src="' . esc_url( $normalized_src ) . '"',
 				$iframe_tag,
@@ -119,7 +121,7 @@ function bbpress_normalize_wp_embed_iframe_secrets( $content ) {
 /**
  * Create a bbPress content display filter callback with autoembed + do_blocks + iframe normalization.
  *
- * @param object $engine Engine instance (implements do_blocks).
+ * @param Engine $engine Engine instance.
  * @param string $hook   Filter hook name.
  * @return callable
  */
@@ -176,14 +178,14 @@ function bbpress_is_editing_blocks() {
 
 	if ( $reply_id ) {
 		$reply = bbp_get_reply( $reply_id );
-		if ( $reply ) {
+		if ( $reply instanceof \WP_Post ) {
 			return has_blocks( $reply->post_content );
 		}
 	}
 
 	if ( $topic_id ) {
 		$topic = get_post_field( 'post_content', $topic_id );
-		return has_blocks( $topic );
+		return is_string( $topic ) && has_blocks( $topic );
 	}
 
 	return false;
@@ -256,14 +258,11 @@ function bbpress_reparent_attachments( $topic_id, $forum_id, $anonymous_data, $t
 	}
 
 	$topic_content = get_post_field( 'post_content', $topic_id );
-	if ( ! $topic_content || ! has_blocks( $topic_content ) ) {
+	if ( ! is_string( $topic_content ) || '' === $topic_content || ! has_blocks( $topic_content ) ) {
 		return;
 	}
 
 	$blocks = parse_blocks( $topic_content );
-	if ( ! is_array( $blocks ) ) {
-		return;
-	}
 
 	$attachment_ids = bbpress_get_attachment_ids_from_blocks( $blocks );
 	$attachment_ids = array_values( array_unique( array_filter( $attachment_ids ) ) );
@@ -275,10 +274,6 @@ function bbpress_reparent_attachments( $topic_id, $forum_id, $anonymous_data, $t
 
 	foreach ( $attachment_ids as $attachment_id ) {
 		$attachment_id = (int) $attachment_id;
-		if ( ! $attachment_id ) {
-			continue;
-		}
-
 		$attachment = get_post( $attachment_id );
 		if ( ! $attachment || $attachment->post_type !== 'attachment' ) {
 			continue;
@@ -388,7 +383,7 @@ function bbpress_get_attachment_ids_from_blocks( array $blocks ) {
 /**
  * Remove blocks from reply email content.
  *
- * @param object $engine  Engine instance.
+ * @param Engine $engine  Engine instance.
  * @param string $content Email content.
  * @param int    $reply_id Reply ID.
  * @return string
@@ -401,7 +396,7 @@ function bbpress_remove_blocks_from_reply( $engine, $content, $reply_id ) {
 /**
  * Remove blocks from topic email content.
  *
- * @param object $engine  Engine instance.
+ * @param Engine $engine  Engine instance.
  * @param string $content Email content.
  * @param int    $topic_id Topic ID.
  * @return string
@@ -414,7 +409,7 @@ function bbpress_remove_blocks_from_topic( $engine, $content, $topic_id ) {
 /**
  * Remove blocks from email, converting to markdown-lite.
  *
- * @param object $engine      Engine instance.
+ * @param Engine $engine      Engine instance.
  * @param string $new_content New content from topic/reply.
  * @param string $old_email   Original email text.
  * @return string
