@@ -242,6 +242,8 @@ declare interface Chrome {
 	topBar?: boolean;
 	/** Primary toolbar row. Default: true. */
 	toolbar?: boolean;
+	/** Native WordPress frontend preview for a loaded canonical postEntity. Default: false. */
+	preview?: boolean;
 	/** Host-owned row below the primary toolbar. Default: false. */
 	secondaryToolbar?: boolean;
 	/** Footer action area. Default: true. */

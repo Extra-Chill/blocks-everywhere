@@ -46,7 +46,7 @@ export interface PostEntityRef {
 interface PostEntityShellProps {
 	postEntity?: PostEntityRef | null;
 	editorSettings?: Record< string, unknown >;
-	children: ReactNode;
+	children: ( hasCanonicalPost: boolean ) => ReactNode;
 }
 
 /**
@@ -119,7 +119,7 @@ function EditorShell( {
 }: {
 	postEntity: PostEntityRef;
 	editorSettings: Record< string, unknown >;
-	children: ReactNode;
+	children: ( hasCanonicalPost: boolean ) => ReactNode;
 } ): ReactElement {
 	const entityConfig = useSelect(
 		( select ) =>
@@ -145,21 +145,21 @@ function EditorShell( {
 		// No entity config for this post type: it is not exposed to the entity
 		// stack, so the record can never load and `<EditorProvider>` would make
 		// core throw. Degrade to a post-agnostic children render.
-		return <>{ children }</>;
+		return <>{ children( false ) }</>;
 	}
 
 	if ( ! post ) {
 		// Config present but entity not yet loaded. Render children without the
 		// provider tree; once the entity arrives, useSelect re-renders and
 		// EditorProvider mounts.
-		return <>{ children }</>;
+		return <>{ children( false ) }</>;
 	}
 
 	return (
 		<EditorProvider post={ post } settings={ editorSettings }>
 			<AutosaveMonitor />
 			<LocalAutosaveMonitor />
-			{ children }
+			{ children( true ) }
 		</EditorProvider>
 	);
 }
@@ -172,7 +172,7 @@ export default function PostEntityShell( {
 	if ( ! postEntity || ! postEntity.id || postEntity.id <= 0 ) {
 		// No canonical post: keep the mount post-agnostic. Gutenberg does not yet
 		// expose an equivalent autosave/editing provider for arbitrary host records.
-		return <>{ children }</>;
+		return <>{ children( false ) }</>;
 	}
 
 	return (
