@@ -2,6 +2,17 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.6.0] - 2026-07-18
+
+### Added
+- add native post preview control
+
+### Changed
+- follow source contracts to owning modules
+
+### Fixed
+- clear PHPStan runtime compatibility findings
+
 ## [3.5.4] - 2026-07-13
 
 ### Fixed
