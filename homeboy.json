@@ -7,6 +7,15 @@
   "extract_command": "tmp=$(mktemp -d) && unzip -q {artifact} -d $tmp && cp -a $tmp/blocks-everywhere/. . && rm -rf $tmp {artifact}",
   "id": "blocks-everywhere",
   "remote_path": "wp-content/plugins/blocks-everywhere",
+  "scopes": {
+    "release": {
+      "exclude": [
+        ".eslintrc.js",
+        ".prettierrc.js",
+        "webpack.config.js"
+      ]
+    }
+  },
   "version_targets": [
     {
       "file": "blocks-everywhere.php",
