@@ -120,6 +120,7 @@ add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
 | `fullscreen` | `false` | Enables the built-in fullscreen toggle and window controls row. Pass `{ enabled, defaultActive, active, onChange }` for host-controlled state. |
 | `topBar` | `false` | Enables the `topBar` and `windowControls` slots above the primary toolbar. |
 | `toolbar` | `true` | Shows the primary toolbar row. Set `false` when a host fully replaces toolbar chrome. |
+| `preview` | `false` | Shows WordPress's native frontend Preview control when `settings.postEntity` identifies an existing canonical post. |
 | `secondaryToolbar` | `false` | Enables a host-owned row below the primary toolbar. |
 | `footer` | `true` | Shows the footer slot. |
 | `documentSidebar` | `false` | Enables a persistent host-owned panel before the canvas. |
@@ -146,6 +147,21 @@ add_filter( 'blocks_everywhere_editor_settings', function ( $settings ) {
 	return $settings;
 } );
 ```
+
+Native frontend preview is opt-in because textarea, comment, bbPress, and generic entity mounts do not represent WordPress posts. For an existing canonical post, provide a positive post ID and enable preview:
+
+```javascript
+window.blocksEverywhere.mountEditor( textarea, {
+	settings: {
+		postEntity: { type: 'post', id: 123 },
+		blocksEverywhere: {
+			chrome: { preview: true },
+		},
+	},
+} );
+```
+
+This control uses the public `@wordpress/editor` `PostPreviewButton`. WordPress saves or autosaves current edits and opens the core-generated frontend preview URL with the active theme, templates, rendering filters, and authorization. It is different from editor-canvas theme styling, which only approximates content appearance inside the editor. The control remains unavailable until the host creates a draft and remounts with its positive post ID; WordPress core hides it for non-viewable post types and disables it when the post cannot be saved.
 
 ### Theme compatibility
 

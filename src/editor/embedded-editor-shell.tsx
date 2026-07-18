@@ -67,7 +67,7 @@ import {
 	// @ts-ignore __experimentalListView is unstable.
 	__experimentalListView as ListView,
 } from '@wordpress/block-editor';
-import { EditorHistoryRedo, EditorHistoryUndo } from '@wordpress/editor';
+import { EditorHistoryRedo, EditorHistoryUndo, PostPreviewButton } from '@wordpress/editor';
 import { Button, Dropdown, Slot } from '@wordpress/components';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -103,6 +103,7 @@ export interface ResolvedChromeConfig {
 	};
 	topBar: boolean;
 	toolbar: boolean;
+	preview: boolean;
 	secondaryToolbar: boolean;
 	footer: boolean;
 	documentSidebar: boolean;
@@ -118,6 +119,8 @@ interface EmbeddedEditorShellProps {
 	toolbar: ResolvedToolbarConfig;
 	/** Resolved shell chrome configuration. */
 	chrome: ResolvedChromeConfig;
+	/** Whether the shell is mounted in a canonical post EditorProvider. */
+	hasCanonicalPost: boolean;
 	/** Editor styles passed through to the iframe canvas. */
 	styles?: unknown[];
 	/** Optional extra className applied to the editor wrapper. */
@@ -175,7 +178,7 @@ function ListViewToggle(): JSX.Element {
  *                        etc. Rendered after the canvas body.
  */
 export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): JSX.Element {
-	const { chrome, toolbar, styles, className, children } = props;
+	const { chrome, toolbar, styles, className, children, hasCanonicalPost } = props;
 	const [ localFullscreenActive, setLocalFullscreenActive ] = useState( chrome.fullscreen.defaultActive );
 	const fullscreenActive = chrome.fullscreen.enabled && resolveFullscreenActive( chrome, localFullscreenActive );
 	// The top-bar is opt-in via `chrome.topBar` only. Fullscreen no longer
@@ -251,6 +254,9 @@ export default function EmbeddedEditorShell( props: EmbeddedEditorShellProps ): 
 						{ toolbar.blockTools && <BlockToolbar hideDragHandle /> }
 						<Slot name="blocks-everywhere/toolbar" />
 						<Slot name="blocks-everywhere/actions" />
+						{ /* Gutenberg's declaration incorrectly marks all optional props as required. */ }
+						{ /* @ts-expect-error See @wordpress/editor PostPreviewButton source defaults. */ }
+						{ hasCanonicalPost && chrome.preview && <PostPreviewButton /> }
 						{ chrome.fullscreen.enabled && (
 							<Button
 								className="blocks-everywhere-editor__fullscreen-toggle"

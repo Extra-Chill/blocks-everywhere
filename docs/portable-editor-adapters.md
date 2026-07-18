@@ -337,6 +337,28 @@ const unregister = window.blocksEverywhere.registerSlotFill( 'footer', ( textare
 unregister();
 ```
 
+For a real WordPress post, Blocks Everywhere also provides an opt-in native frontend Preview control through `blocksEverywhere.chrome.preview`. It is intentionally narrower than a generic slot action:
+
+```javascript
+window.blocksEverywhere.mountEditor( textarea, {
+	settings: {
+		...wpBlocksEverywhere,
+		postEntity: { type: 'post', id: 123 },
+		blocksEverywhere: {
+			...wpBlocksEverywhere.blocksEverywhere,
+			chrome: {
+				...wpBlocksEverywhere.blocksEverywhere.chrome,
+				preview: true,
+			},
+		},
+	},
+} );
+```
+
+The control renders core's public `@wordpress/editor` `PostPreviewButton` inside the canonical `EditorProvider` path. Core saves or autosaves the current edits, opens a tab synchronously, and navigates it to the real frontend preview URL returned by WordPress, including draft authorization when needed. Core also owns viewability, saveability, and permission gating.
+
+Editor-canvas theme styles are not a frontend preview: they style block content inside the embedded canvas but do not run the site's frontend template, dynamic rendering, or filters. Use native preview when the host needs the actual frontend result. A host must create a draft before preview is available; missing, zero, and negative post IDs remain post-agnostic, and Blocks Everywhere does not choose when host records become posts.
+
 ### Host Entity Bridges
 
 A host entity bridge describes what is being edited without pretending every surface is a canonical WordPress post.

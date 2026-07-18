@@ -196,6 +196,7 @@ function resolveChromeConfig( raw: Partial< ResolvedChromeConfig > | undefined )
 		},
 		topBar: raw?.topBar === true,
 		toolbar: raw?.toolbar !== false,
+		preview: raw?.preview === true,
 		secondaryToolbar: raw?.secondaryToolbar === true,
 		footer: raw?.footer !== false,
 		documentSidebar: raw?.documentSidebar === true,
@@ -210,7 +211,17 @@ function ensureSeededBlocks( blocks ) {
 	return [ createBlock( 'core/paragraph' ) ];
 }
 
-function EmbeddedBlockEditor( { children, className, onChange, onError, onInput, onLoad, onSelection, settings } ) {
+function EmbeddedBlockEditor( {
+	children,
+	className,
+	hasCanonicalPost,
+	onChange,
+	onError,
+	onInput,
+	onLoad,
+	onSelection,
+	settings,
+} ) {
 	const [ blocks, setBlocks ] = useState( () => {
 		try {
 			const initial = onLoad ? onLoad( parse, rawHandler ) : [];
@@ -284,6 +295,7 @@ function EmbeddedBlockEditor( { children, className, onChange, onError, onInput,
 			>
 				<EmbeddedEditorShell
 					chrome={ chrome }
+					hasCanonicalPost={ hasCanonicalPost }
 					toolbar={ toolbar }
 					styles={ settings.editor?.styles || [] }
 					className={ className }
@@ -515,62 +527,65 @@ function createEditorContainer( container, textarea, settings ) {
 		root.render(
 			<MaybeEditorDataBoundary instance={ instance } settings={ settings } textarea={ textarea }>
 				<PostEntityShell postEntity={ postEntity } editorSettings={ settings?.editor }>
-					<EmbeddedBlockEditor
-						key={ editorKey }
-						settings={ settings }
-						onLoad={ () => entityBridge.load() }
-						onError={ ( error ) => {
-							// eslint-disable-next-line no-console
-							console.error( 'Blocks Everywhere: editor initialization failed', error );
-							container?.classList?.add( 'blocks-everywhere--error' );
-							document?.body?.classList?.add( 'gutenberg-support-loaded' );
-							setLoaded( container );
-							emitLifecycle( 'error', { error, instance } );
-						} }
-						onInput={ ( newBlocks ) => {
-							settings?.blocksEverywhere?.__experimentalOnInput?.( newBlocks );
-							const serialized = contentBridge.save( newBlocks );
-							entityBridge.saveEdits( newBlocks, serialized, 'input' );
-							emitContentHook( 'input', newBlocks, serialized );
-							runtimeAdapter?.onContent?.( newBlocks, serialized, 'input' );
-						} }
-						onChange={ ( newBlocks ) => {
-							settings?.blocksEverywhere?.__experimentalOnChange?.( newBlocks );
-							const serialized = contentBridge.save( newBlocks );
-							entityBridge.saveEdits( newBlocks, serialized, 'change' );
-							emitContentHook( 'change', newBlocks, serialized );
-							runtimeAdapter?.onContent?.( newBlocks, serialized, 'change' );
-						} }
-						onSelection={ ( selection ) =>
-							settings?.blocksEverywhere?.__experimentalOnSelection?.( selection )
-						}
-						className={ settings?.blocksEverywhere?.className }
-					>
-						{ ( { blocks, replaceBlocks } ) => (
-							<>
-								<EditorLoaded
-									onLoaded={ () => {
-										setLoaded( container );
-										emitLifecycle( 'loaded', { instance } );
-									} }
-								/>
-								<ThemeSupportsDispatcher themeSupports={ settings?.editor?.themeSupports } />
-								<ContentBridge
-									textarea={ textarea }
-									blocks={ blocks }
-									replaceBlocks={ replaceBlocks }
-									contentBridge={ contentBridge }
-								/>
-								<RegisteredSlotFills textarea={ textarea } />
+					{ ( hasCanonicalPost ) => (
+						<EmbeddedBlockEditor
+							key={ editorKey }
+							hasCanonicalPost={ hasCanonicalPost }
+							settings={ settings }
+							onLoad={ () => entityBridge.load() }
+							onError={ ( error ) => {
+								// eslint-disable-next-line no-console
+								console.error( 'Blocks Everywhere: editor initialization failed', error );
+								container?.classList?.add( 'blocks-everywhere--error' );
+								document?.body?.classList?.add( 'gutenberg-support-loaded' );
+								setLoaded( container );
+								emitLifecycle( 'error', { error, instance } );
+							} }
+							onInput={ ( newBlocks ) => {
+								settings?.blocksEverywhere?.__experimentalOnInput?.( newBlocks );
+								const serialized = contentBridge.save( newBlocks );
+								entityBridge.saveEdits( newBlocks, serialized, 'input' );
+								emitContentHook( 'input', newBlocks, serialized );
+								runtimeAdapter?.onContent?.( newBlocks, serialized, 'input' );
+							} }
+							onChange={ ( newBlocks ) => {
+								settings?.blocksEverywhere?.__experimentalOnChange?.( newBlocks );
+								const serialized = contentBridge.save( newBlocks );
+								entityBridge.saveEdits( newBlocks, serialized, 'change' );
+								emitContentHook( 'change', newBlocks, serialized );
+								runtimeAdapter?.onContent?.( newBlocks, serialized, 'change' );
+							} }
+							onSelection={ ( selection ) =>
+								settings?.blocksEverywhere?.__experimentalOnSelection?.( selection )
+							}
+							className={ settings?.blocksEverywhere?.className }
+						>
+							{ ( { blocks, replaceBlocks } ) => (
+								<>
+									<EditorLoaded
+										onLoaded={ () => {
+											setLoaded( container );
+											emitLifecycle( 'loaded', { instance } );
+										} }
+									/>
+									<ThemeSupportsDispatcher themeSupports={ settings?.editor?.themeSupports } />
+									<ContentBridge
+										textarea={ textarea }
+										blocks={ blocks }
+										replaceBlocks={ replaceBlocks }
+										contentBridge={ contentBridge }
+									/>
+									<RegisteredSlotFills textarea={ textarea } />
 
-								{ /* Forward block changes to core/editor edits so <AutosaveMonitor> sees dirty state. */ }
-								{ postEntity?.id > 0 && <EditorEditsBridge blocks={ blocks } /> }
+									{ /* Forward block changes to core/editor edits so <AutosaveMonitor> sees dirty state. */ }
+									{ hasCanonicalPost && <EditorEditsBridge blocks={ blocks } /> }
 
-								{ settings.editorType === 'buddypress' && <BuddyPress textarea={ textarea } /> }
-								<PageGlobalBlockVariationPruner settings={ settings } />
-							</>
-						) }
-					</EmbeddedBlockEditor>
+									{ settings.editorType === 'buddypress' && <BuddyPress textarea={ textarea } /> }
+									<PageGlobalBlockVariationPruner settings={ settings } />
+								</>
+							) }
+						</EmbeddedBlockEditor>
+					) }
 				</PostEntityShell>
 			</MaybeEditorDataBoundary>
 		);
