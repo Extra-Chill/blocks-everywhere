@@ -51,7 +51,7 @@ import {
 	resolvePermission,
 } from './services';
 import { RegisteredSlotFills } from './slot-fills';
-import { getBootstrapSettingsSummary } from '../bootstrap-settings';
+import { applyPageGlobalEditorSettings } from '../page-global-setup';
 
 export type {
 	EditorHostRuntimeAdapter,
@@ -324,48 +324,6 @@ function createContainer( textarea, existingContainer ) {
 	return { container, inserted: true };
 }
 
-function getPageGlobalDisallowedBlockVariations( settings ) {
-	const configured = settings?.blocksEverywhere?.blockVariations?.disallow;
-	const variations = Array.isArray( configured ) ? [ ...configured ] : [];
-
-	// Gutenberg portability gap: block variations are registered page-globally,
-	// so there is no per-editor way to hide a variation. BE makes that limitation
-	// explicit through `blocksEverywhere.blockVariations.disallow` and performs
-	// the one-way unregister at the page boundary.
-	if ( settings?.editorType === 'bbpress' || getBootstrapSettingsSummary().hasBbpressEditor ) {
-		variations.push(
-			{ blockName: 'core/paragraph', variationName: 'stretchy-paragraph' },
-			{ blockName: 'core/heading', variationName: 'stretchy-heading' }
-		);
-	}
-
-	return variations;
-}
-
-function PageGlobalBlockVariationPruner( { settings } ) {
-	useEffect( () => {
-		const variations = getPageGlobalDisallowedBlockVariations( settings );
-		if ( variations.length === 0 ) {
-			return;
-		}
-
-		try {
-			variations.forEach( ( variation ) => {
-				const blockName = variation?.blockName || variation?.block;
-				const variationName = variation?.variationName || variation?.name;
-				if ( blockName && variationName ) {
-					window?.wp?.blocks?.unregisterBlockVariation?.( blockName, variationName );
-				}
-			} );
-		} catch ( error ) {
-			// eslint-disable-next-line no-console
-			console.error( 'Blocks Everywhere: failed to prune block variations', error );
-		}
-	}, [ settings ] );
-
-	return null;
-}
-
 /**
  * Dispatches theme supports to WordPress core store.
  * This enables blocks like core/embed to detect responsive-embeds support
@@ -394,6 +352,8 @@ function createEditorContainer( container, textarea, settings ) {
 	const services: EditorServices = settings?.blocksEverywhere?.services || {};
 	const serviceContext = createServiceContext( settings, textarea, container );
 	const scopedApiFetch = createScopedApiFetch( services );
+	const cleanupPageGlobalSettings = applyPageGlobalEditorSettings( settings, container );
+	cleanupCallbacks.push( cleanupPageGlobalSettings );
 
 	const hasUploadPermission = resolvePermission(
 		services,
@@ -581,7 +541,6 @@ function createEditorContainer( container, textarea, settings ) {
 									{ hasCanonicalPost && <EditorEditsBridge blocks={ blocks } /> }
 
 									{ settings.editorType === 'buddypress' && <BuddyPress textarea={ textarea } /> }
-									<PageGlobalBlockVariationPruner settings={ settings } />
 								</>
 							) }
 						</EmbeddedBlockEditor>

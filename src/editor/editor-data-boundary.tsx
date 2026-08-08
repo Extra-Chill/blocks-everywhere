@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { BlockContextProvider } from '@wordpress/block-editor';
+import { BlockContextProvider, store as blockEditorStore } from '@wordpress/block-editor';
 import { createRegistry, RegistryProvider, useRegistry } from '@wordpress/data';
 import { useEffect, useState } from '@wordpress/element';
 
@@ -9,15 +9,6 @@ import { useEffect, useState } from '@wordpress/element';
  * Internal dependencies
  */
 import { getBlockContext, getEditorContext, getEditorDataSettings } from './editor-context';
-
-function hasEditorDataBoundary( settings ) {
-	const data = getEditorDataSettings( settings );
-	return Boolean(
-		data.register ||
-			( Array.isArray( data.stores ) && data.stores.length > 0 ) ||
-			Object.keys( getBlockContext( settings ) ).length > 0
-	);
-}
 
 function registerEditorStore( registry, store, helpers ) {
 	if ( typeof store === 'function' ) {
@@ -52,6 +43,7 @@ function EditorDataBoundary( { children, instance, settings, textarea } ) {
 		const context = getEditorContext( settings );
 		const blockContext = getBlockContext( settings );
 		const registry = createRegistry( {}, parentRegistry );
+		registry.register( blockEditorStore );
 		const helpers = {
 			blockContext,
 			context,
@@ -96,10 +88,6 @@ function EditorDataBoundary( { children, instance, settings, textarea } ) {
 }
 
 export function MaybeEditorDataBoundary( { children, instance, settings, textarea } ) {
-	if ( ! hasEditorDataBoundary( settings ) ) {
-		return <>{ children }</>;
-	}
-
 	return (
 		<EditorDataBoundary instance={ instance } settings={ settings } textarea={ textarea }>
 			{ children }

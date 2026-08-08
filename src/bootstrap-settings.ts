@@ -48,12 +48,5 @@ export const getBootstrapSettingsSummary = () => {
 		allowEmbeds: Array.from(
 			new Set( settings.flatMap( ( setting ) => setting?.blocksEverywhere?.allowEmbeds ?? [] ) )
 		),
-		allowHeading: settings.some( ( setting ) =>
-			( setting?.blocksEverywhere?.blocks?.allowBlocks ?? [] ).includes( 'core/heading' )
-		),
-		hasBbpressEditor: settings.some( ( setting ) => setting?.editorType === 'bbpress' ),
-		pastePlainText: settings.some( ( setting ) => setting?.pastePlainText ),
-		patchEmoji: settings.some( ( setting ) => setting?.patchEmoji ),
-		replaceParagraphCode: settings.some( ( setting ) => setting?.replaceParagraphCode ),
 	};
 };

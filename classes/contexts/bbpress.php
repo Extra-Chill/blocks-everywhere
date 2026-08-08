@@ -78,6 +78,10 @@ function bbpress_context( Engine $engine ) {
 		'oembed_permission' => function () {
 			return current_user_can( 'publish_topics' ) || current_user_can( 'publish_replies' );
 		},
+		'disallowed_block_variations' => [
+			[ 'blockName' => 'core/paragraph', 'variationName' => 'stretchy-paragraph' ],
+			[ 'blockName' => 'core/heading', 'variationName' => 'stretchy-heading' ],
+		],
 		'settings_provider' => function ( $settings ) {
 			$settings['bbpress'] = [
 				'topicId'     => bbpress_get_current_topic_id(),
