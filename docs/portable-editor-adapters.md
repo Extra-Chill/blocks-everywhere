@@ -623,7 +623,20 @@ const replySettings = window.blocksEverywhere.getSettings( 'reply-composer' );
 
 The registry is a compatibility layer around settings lookup, not a place to store secrets. Keep nonces and privileged operations behind server-rendered WordPress settings or explicit per-instance services.
 
-Some Gutenberg APIs are page-global rather than editor-instance scoped, including block registration filters, block variations, rich-text formats, and the legacy twemoji parser hook. Those bootstrap paths use the aggregate registered settings summary to preserve existing page behavior without treating those hooks as portable adapter contracts.
+### Setting Scope And Page-Global Effects
+
+Blocks Everywhere resolves each mount into its own child `@wordpress/data` registry and registers an isolated `core/block-editor` store there. It keeps `BlockEditorProvider`'s `useSubRegistry={ false }` compatibility flag because the provider-created sub-registry can recurse on embedded host registries; the explicit child registry provides the same isolation through Gutenberg's public data API without that failure mode.
+
+| Scope | Settings and behavior |
+|-------|-----------------------|
+| Per instance | `saveTextarea`, `container`, `editorType`, `editor`, `restUrl`, `restNonce`, `autocompleter`, `patchEmoji`, `pastePlainText`, `replaceParagraphCode`, `blocks.allowBlocks`, `blocks.disallowBlocks`, `patterns`, `chrome`, `toolbar`, `sidebar`, `className`, `contentBridge`, `entityBridge`, `initialContent`, `lifecycle`, `hostAdapter`, `runtimeAdapter`, `services`, `features`, `data`, `mode`, `modes`, `settingsTransforms`, `preferenceKey`, `defaultPreferences`, media permissions, templates, and post-entity settings. `pluginsUrl` and `version` are inert payload metadata and do not mutate runtime state. |
+| Page global | `allowUrlEmbed` and `blocksEverywhere.allowEmbeds` affect the shared core embed registration because Gutenberg has no per-editor transform or variation registry. `blocksEverywhere.blockVariations.disallow` explicitly removes shared variations. The block registration filter, core block registration, legacy `editor.MediaUpload` hook, and autocomplete hook are also shared registrations. |
+
+Allowed block types, pattern lists, rich-text format availability in the Blocks Everywhere paragraph, paste mode, heading normalization, services, and emoji suppression all use the isolated editor settings store or an instance marker. Two editors can therefore select conflicting values without the last mounted provider replacing the first editor's settings.
+
+Page-global setup is idempotent. The registration filter, core blocks, media hook, autocomplete hook, and twemoji wrapper are each installed at most once. Block variation removals are deduplicated by block and variation name. They are also irreversible for the lifetime of the page: Gutenberg does not expose an API to restore the exact removed registration or scope it to one editor. Unmount removes active autocomplete registrations and the instance emoji marker, but intentionally does not try to reverse shared registry mutations.
+
+The twemoji wrapper itself is page-global, but it returns early only for descendants of an attached editor whose own settings enable `patchEmoji`; unrelated editors and host-page content continue through the original parser. Rich-text formats are no longer removed from Gutenberg's shared registry. Blocks Everywhere passes its format allow-list directly to the paragraph `RichText` component instead.
 
 When a host surface must remove page-global variations, declare that explicitly instead of hiding the behavior in host code:
 

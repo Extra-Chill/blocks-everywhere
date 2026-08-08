@@ -23,8 +23,6 @@ import { formatLTR } from '@wordpress/icons';
  * Internal dependencies
  */
 import { useOnEnter } from './use-enter';
-import { getBootstrapSettingsSummary } from '../../bootstrap-settings';
-
 const name = 'core/paragraph';
 
 function ParagraphRTLControl( { direction, setDirection } ) {
@@ -79,9 +77,13 @@ function isPossiblyCode( blocks ) {
 
 function ParagraphBlock( { attributes, mergeBlocks, onReplace, onRemove, setAttributes, clientId } ) {
 	const { align, content, direction, dropCap, placeholder } = attributes;
-	// This edit component is installed through the page-global block registry.
-	// Plain-text paste therefore follows the aggregate bootstrap summary.
-	const pastePlainText = getBootstrapSettingsSummary().pastePlainText;
+	const [ allowHeading, allowUrlEmbed, allowedFormats, pastePlainText, replaceParagraphCode ] = useSettings(
+		'blocksEverywhere.allowHeading',
+		'blocksEverywhere.allowUrlEmbed',
+		'blocksEverywhere.allowedFormats',
+		'blocksEverywhere.pastePlainText',
+		'blocksEverywhere.replaceParagraphCode'
+	);
 	const [ isDropCapFeatureEnabled ] = useSettings( 'typography.dropCap' );
 	const blockProps = useBlockProps( {
 		ref: useOnEnter( { clientId, content } ),
@@ -102,7 +104,7 @@ function ParagraphBlock( { attributes, mergeBlocks, onReplace, onRemove, setAttr
 	}
 
 	function hijackedReplace( values ) {
-		if ( isPossiblyCode( values ) ) {
+		if ( replaceParagraphCode && isPossiblyCode( values ) ) {
 			const codeContent = values.map( ( block ) => block.attributes.content ).join( '\n\n' );
 			const block = createBlock( 'core/code', { content: codeContent } );
 
@@ -110,7 +112,19 @@ function ParagraphBlock( { attributes, mergeBlocks, onReplace, onRemove, setAttr
 			return;
 		}
 
-		return onReplace( values );
+		const normalizedValues = allowHeading
+			? values
+			: values.map( ( block ) => {
+					if ( block.name !== 'core/heading' ) {
+						return block;
+					}
+
+					return createBlock( 'core/paragraph', {
+						content: `<strong>${ block.attributes?.content || '' }</strong>`,
+					} );
+			  } );
+
+		return onReplace( normalizedValues );
 	}
 
 	return (
@@ -151,6 +165,7 @@ function ParagraphBlock( { attributes, mergeBlocks, onReplace, onRemove, setAttr
 			) }
 
 			<RichText
+				allowedFormats={ allowedFormats }
 				identifier="content"
 				tagName="p"
 				{ ...blockProps }
@@ -185,7 +200,7 @@ function ParagraphBlock( { attributes, mergeBlocks, onReplace, onRemove, setAttr
 				data-empty={ content ? false : true }
 				placeholder={ placeholder || __( 'Type / to choose a block' ) }
 				data-custom-placeholder={ placeholder ? true : undefined }
-				__unstableEmbedURLOnPaste
+				__unstableEmbedURLOnPaste={ allowUrlEmbed }
 				__unstableAllowPrefixTransformations
 				__unstablePastePlainText={ pastePlainText }
 			/>

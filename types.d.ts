@@ -622,6 +622,9 @@ declare const wp: {
 	blocks?: {
 		unregisterBlockVariation?: ( blockName: string, variationName: string ) => void;
 	};
+	blockLibrary?: {
+		registerCoreBlocks?: () => void;
+	};
 };
 
 declare interface Window {
@@ -631,6 +634,10 @@ declare interface Window {
 		nonce?: string;
 	};
 	wpBlocksEverywhereSettings?: Record< string, typeof wpBlocksEverywhere >;
+	blocksEverywhereCoreBlocksRegistered?: boolean;
+	twemoji?: {
+		parse: ( object: Element, args?: unknown ) => unknown;
+	};
 	blocksEverywhere?: {
 		mountEditor: (
 			textarea: HTMLTextAreaElement,

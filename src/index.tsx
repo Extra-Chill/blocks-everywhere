@@ -3,8 +3,6 @@
  */
 
 import domReady from '@wordpress/dom-ready';
-import { addFilter } from '@wordpress/hooks';
-import { unregisterFormatType } from '@wordpress/rich-text';
 
 /**
  * Internal dependencies
@@ -12,13 +10,8 @@ import { unregisterFormatType } from '@wordpress/rich-text';
 
 import mountEditor, { unmountEditor } from './editor';
 import { registerSlotFill } from './editor/slot-fills';
-import customBlocks from './block-customization';
-import {
-	getBootstrapSetting,
-	getBootstrapSettingsSummary,
-	getRegisteredBootstrapSettings,
-	registerBootstrapSettings,
-} from './bootstrap-settings';
+import { getBootstrapSetting, getRegisteredBootstrapSettings, registerBootstrapSettings } from './bootstrap-settings';
+import { ensurePageGlobalSetup } from './page-global-setup';
 import './styles/style.scss';
 
 // Back-compat alias for dynamic editor initialization.
@@ -73,49 +66,7 @@ const getContentApi = ( textarea: HTMLTextAreaElement ) => {
 };
 
 domReady( () => {
-	// Gutenberg package bootstrap below is intentionally page-global: these APIs
-	// register filters, blocks, rich-text formats, and host-page DOM behavior.
-	// Decisions here use the aggregate bootstrap settings summary because
-	// Gutenberg does not expose per-editor registrations for these hooks.
-	// Editor REST behavior is scoped through per-instance services in src/editor.
-	// Modify any blocks we need to
-	addFilter( 'blocks.registerBlockType', 'blocks-everywhere/modify-blocks', customBlocks );
-
-	// Register core blocks once per page. WordPress enqueues `wp-block-library`
-	// which exposes `wp.blockLibrary.registerCoreBlocks` on the global, but
-	// nothing calls it on the host page — so without this, `getBlockType()`
-	// returns undefined for every block name, and `createBlock()` recurses on
-	// `core/missing` until the stack overflows (see the linked upstream issue).
-	// IBE used to call this from its own initializer; PR #6 dropped IBE but
-	// didn't carry this call forward.
-	const blockLibrary = ( window as any ).wp?.blockLibrary;
-	if ( blockLibrary?.registerCoreBlocks && ! ( window as any ).blocksEverywhereCoreBlocksRegistered ) {
-		blockLibrary.registerCoreBlocks();
-		( window as any ).blocksEverywhereCoreBlocksRegistered = true;
-	}
-
-	// Rich-text formats are a Gutenberg-wide registry, not an instance adapter.
-	unregisterFormatType( 'core/text-color' );
-	unregisterFormatType( 'core/image' );
-
-	// Remove some items from the toolbar “More” dropdown.
-	// Keep: strikethrough, subscript, superscript.
-	unregisterFormatType( 'core/code' );
-	unregisterFormatType( 'core/keyboard' );
-	unregisterFormatType( 'core/language' );
-	unregisterFormatType( 'core/math' );
-
-	if ( getBootstrapSettingsSummary().patchEmoji && window?.twemoji?.parse ) {
-		const original = window.twemoji.parse;
-
-		window.twemoji.parse = ( object, args ) => {
-			if ( object.closest( '.blocks-everywhere' ) ) {
-				return object;
-			}
-
-			return original( object, args );
-		};
-	}
+	ensurePageGlobalSetup();
 
 	// Add the editor
 	getRegisteredBootstrapSettings().forEach( ( settings ) => {

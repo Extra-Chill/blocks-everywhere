@@ -1,4 +1,10 @@
 /**
+ * WordPress dependencies
+ */
+import { select } from '@wordpress/data';
+import { store as richTextStore } from '@wordpress/rich-text';
+
+/**
  * Internal dependencies
  */
 import type { EditorMountSettings, EditorServices } from './editor-services';
@@ -24,6 +30,15 @@ type SettingsTransformContext = {
 export type SettingsTransform =
 	| Record< string, unknown >
 	| ( ( settings: EditorMountSettings, context: SettingsTransformContext ) => Record< string, unknown > | void );
+
+const disallowedFormatTypes = new Set( [
+	'core/text-color',
+	'core/image',
+	'core/code',
+	'core/keyboard',
+	'core/language',
+	'core/math',
+] );
 
 function normalizeTransformPatch( patch ) {
 	if ( ! isPlainObject( patch ) ) {
@@ -127,6 +142,21 @@ function resolveAllowedBlocks( settings ) {
 	const nextAllowedBlocks = allowedBlocks.filter( ( blockName ) => disallowedBlocks.indexOf( blockName ) === -1 );
 	settings.blocksEverywhere.blocks.allowBlocks = nextAllowedBlocks;
 	settings.editor.allowedBlockTypes = nextAllowedBlocks;
+}
+
+function resolveInstanceBehaviorSettings( settings ) {
+	const allowedBlocks = settings?.blocksEverywhere?.blocks?.allowBlocks;
+	const formatTypes = ( select( richTextStore ) as any ).getFormatTypes();
+	settings.editor.blocksEverywhere = {
+		...( settings.editor.blocksEverywhere || {} ),
+		allowHeading: ! Array.isArray( allowedBlocks ) || allowedBlocks.includes( 'core/heading' ),
+		allowUrlEmbed: settings?.allowUrlEmbed !== false,
+		allowedFormats: formatTypes
+			.map( ( formatType ) => formatType.name )
+			.filter( ( formatName ) => ! disallowedFormatTypes.has( formatName ) ),
+		pastePlainText: settings?.pastePlainText === true,
+		replaceParagraphCode: settings?.replaceParagraphCode === true,
+	};
 }
 
 function getPatternIdentifier( pattern ) {
@@ -276,6 +306,7 @@ export function resolveMountSettings(
 
 	resolvePatternSettings( resolvedSettings );
 	resolveAllowedBlocks( resolvedSettings );
+	resolveInstanceBehaviorSettings( resolvedSettings );
 
 	return resolvedSettings;
 }
