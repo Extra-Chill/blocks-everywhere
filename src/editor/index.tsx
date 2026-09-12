@@ -8,9 +8,12 @@ import {
 	// Gutenberg portability gap: there is no stable, post-agnostic public
 	// library panel primitive yet. BE isolates the unstable export behind its
 	// own detached inserter contract so hosts never depend on this API shape.
+	// No stable equivalent exists; rationale in the comment above. The
+	// directive must be the line IMMEDIATELY before the import — with a
+	// wrapped comment in between it targets the comment instead and is
+	// reported as an unused disable directive.
 	// @ts-ignore __experimentalLibrary is unstable.
-	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- No stable
-	// equivalent exists; the rationale is documented in the comment above.
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis
 	__experimentalLibrary as Library,
 } from '@wordpress/block-editor';
 import { mediaUpload as legacyMediaUpload } from '@wordpress/editor';
