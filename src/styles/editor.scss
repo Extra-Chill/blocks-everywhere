@@ -50,6 +50,26 @@
 		color: var(--wp-components-color-foreground);
 	}
 
+	// The inserter's search header is a SEPARATE element from
+	// `.block-editor-inserter__menu`, and core hard-codes it light:
+	// `.block-editor-inserter__search { background-color: #fff;
+	// position: sticky; top: 0; }`. Theming only the `__menu` container
+	// therefore leaves a light slab across the full width of an otherwise
+	// dark inserter, and because the rule is `position: sticky` it stays
+	// pinned to the top of the panel while the block list scrolls under
+	// it — so it never scrolls out of view.
+	// The text inside already inherits themed colours via
+	// `--wp-components-color-foreground`, so the result was near-white
+	// text on pure white: the search placeholder was invisible.
+	// An existing `.block-editor-inserter__search` rule lives in
+	// bbpress.scss, but it is scoped to `#bbpress-forums fieldset.bbp-form`
+	// and only removes the border, so non-bbPress hosts never got a
+	// background fix.
+	.block-editor-inserter__search {
+		background-color: var(--background-color);
+		color: var(--wp-components-color-foreground);
+	}
+
 
 	// List View / Block Navigation popover (needs explicit border + row hover)
 	.components-popover.block-editor-block-navigation__popover .components-popover__content {
@@ -312,6 +332,15 @@
 		height: 100%;
 		width: 100%;
 		min-height: 400px;
+
+		// The iframe ELEMENT needs its own background. The document inside is
+		// themed separately (see $iframe_editor_css in class-editor.php), but
+		// that styling only applies once the canvas document has parsed and
+		// painted. Until then the browser paints the iframe element itself,
+		// which defaults light — producing a pale flash on load against a dark
+		// surface, and a pale band anywhere the element is taller than its
+		// content.
+		background-color: var(--background-color);
 	}
 
 	// Keep theme background + separator on the BE toolbar bar.
