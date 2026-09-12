@@ -9,6 +9,8 @@ import {
 	// library panel primitive yet. BE isolates the unstable export behind its
 	// own detached inserter contract so hosts never depend on this API shape.
 	// @ts-ignore __experimentalLibrary is unstable.
+	// eslint-disable-next-line @wordpress/no-unsafe-wp-apis -- No stable
+	// equivalent exists; the rationale is documented in the comment above.
 	__experimentalLibrary as Library,
 } from '@wordpress/block-editor';
 import { mediaUpload as legacyMediaUpload } from '@wordpress/editor';

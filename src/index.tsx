@@ -25,7 +25,7 @@ import './styles/style.scss';
  * lookup without consumers needing to know the internal property name.
  *
  * @param {HTMLTextAreaElement} textarea The textarea element the editor was created from.
- * @return {BlocksEverywhereContentApi|null} Content API for the editor instance.
+ * @return {import('./editor/content-bridge').BlocksEverywhereContentApi|null} Content API for the editor instance.
  *
  * @example
  *   const api = window.blocksEverywhereGetContentApi( myTextarea );

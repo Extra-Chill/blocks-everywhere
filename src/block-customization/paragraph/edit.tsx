@@ -1,3 +1,23 @@
+/* eslint-disable @wordpress/i18n-text-domain, @wordpress/no-unsafe-wp-apis */
+/**
+ * This file is a customized copy of core's Paragraph block edit component.
+ *
+ * Two lint rules are disabled deliberately for the whole file:
+ *
+ * `@wordpress/i18n-text-domain` — the translatable strings here are copied
+ * verbatim from core so they resolve against core's EXISTING translations.
+ * Adding a `blocks-everywhere` text domain would satisfy the linter while
+ * breaking that inheritance, leaving these strings untranslated in every
+ * non-English locale. The missing domain is the correct behaviour.
+ *
+ * `@wordpress/no-unsafe-wp-apis` — mirroring core's Paragraph UI requires the
+ * same `__experimental*` components core itself uses. Dropping them would
+ * change the block's controls, which is the opposite of the intent.
+ *
+ * Both are suppressed at file scope rather than per line because they recur
+ * throughout and the justification is identical for every occurrence.
+ */
+
 /**
  * External dependencies
  */
@@ -209,3 +229,5 @@ function ParagraphBlock( { attributes, mergeBlocks, onReplace, onRemove, setAttr
 }
 
 export default ParagraphBlock;
+
+/* eslint-enable @wordpress/i18n-text-domain, @wordpress/no-unsafe-wp-apis */
