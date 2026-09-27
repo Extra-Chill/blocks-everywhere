@@ -34,7 +34,6 @@ src
 .env*
 
 # Build/dev config files
-build.sh
 .buildignore
 .eslintrc.js
 .prettierrc.js
