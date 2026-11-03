@@ -42,4 +42,7 @@ jobs:
     uses: Extra-Chill/homeboy-action/.github/workflows/release.yml@v2
     with:
       dry-run: ${{ inputs.dry-run || false }}
+      # Deploy on release instead of waiting for the poller (Extra-Chill/extrachill#1092).
+      dispatch-repo: Extra-Chill/extrachill
+      dispatch-event: component-released
     secrets: inherit
