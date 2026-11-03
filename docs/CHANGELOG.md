@@ -2,6 +2,31 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.6.1] - 2026-11-03
+
+### Changed
+- release from trunk (release-branch input)
+- trigger releases on trunk again
+- dispatch component-released to extrachill after release
+- Keep Gutenberg's pressed color on header toolbar buttons
+- Update @automattic/isolated-block-editor to 2.31.0
+- Stop inserter tiles moving on hover
+- Update version to 1.23.2
+- Update isolated-block-editor to 2.30.0
+- Add packageManager
+- Enforce block allowlist on nested blocks and all handlers
+- trigger the release train on trunk, not main
+- adopt the shared Homeboy release train
+- isolate embedded editor settings
+- Update dependency locks for security fixes
+- Clear critical Yarn audit findings
+
+### Fixed
+- Fix disabled button colour and inserter position with current Gutenberg (1.23.3)
+- grant id-token so the shared release workflow can start
+- place the unsafe-API disable directly above the import
+- theme the inserter search header and canvas iframe for dark hosts
+
 ## [3.6.0] - 2026-07-18
 
 ### Added
