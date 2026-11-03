@@ -11,11 +11,12 @@ import './edit.scss';
  */
 import { __experimentalElevation as Elevation, MenuItem, NavigableMenu, Popover } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
+import { getSafeUrl } from './block';
 
 export const ConfirmContent = ( { url, confirm, cancel } ) => {
 	return (
 		<>
-			<a href={ url } target="_blank" rel="noreferrer">
+			<a href={ getSafeUrl( url ) } target="_blank" rel="noreferrer">
 				{ url }
 			</a>
 

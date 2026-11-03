@@ -133,7 +133,7 @@ function bbpress_make_content_display_callback( $engine, $hook ) {
 			$content = $GLOBALS['wp_embed']->autoembed( $content );
 		}
 
-		$content = $engine->do_blocks( $content, $hook );
+		$content = $engine->filter_context_content( 'bbpress', 'do_blocks', $content, $hook );
 
 		if ( false === strpos( $content, 'wp-embedded-content' ) ) {
 			$content = $GLOBALS['wp_embed']->autoembed( $content );
@@ -419,8 +419,8 @@ function bbpress_remove_blocks_from_email( $engine, $new_content, $old_email ) {
 		return $old_email;
 	}
 
-	$new_content = wp_specialchars_decode( $new_content );
-	$new_content = $engine->do_blocks( $new_content, 'bbp_get_new_content_content' );
+	// Do not turn encoded text into executable block markup.
+	$new_content = $engine->filter_context_content( 'bbpress', 'do_blocks', $new_content, 'bbp_get_new_content_content' );
 
 	// markdown-lite conversions
 	$new_content = preg_replace( '@<li[^>]*>(.*?)<@s', ' - $1<', $new_content );

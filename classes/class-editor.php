@@ -44,6 +44,7 @@ class Editor {
 	 * @param WP_Theme_JSON_Data|WP_Theme_JSON_Data_Gutenberg $json JSON.
 	 * @return WP_Theme_JSON_Data|WP_Theme_JSON_Data_Gutenberg
 	 */
+	// phpcs:ignore
 	public function wp_theme_json_data_theme( $json ) {
 		// Merge our customization restrictions into the existing theme.json
 		// data instead of replacing it. Replacing would clobber font-family
@@ -120,7 +121,7 @@ class Editor {
 
 		add_filter(
 			'jetpack_blocks_variation',
-			function() {
+			function () {
 				return 'no-post-editor';
 			}
 		);

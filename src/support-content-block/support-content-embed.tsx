@@ -10,7 +10,7 @@ import { __, sprintf } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { SupportContentBlockAttributes } from './block';
+import { getSafeUrl, SupportContentBlockAttributes } from './block';
 import { WordPressIcon } from './wordpress-icon';
 import { InlineSkeleton } from './inline-skeleton';
 import { getRelativeDate } from './utils';
@@ -98,7 +98,7 @@ export const SupportContentEmbed = ( props: {
 			{ props.clickable && (
 				<a
 					className="be-support-content__opener"
-					href={ props.attributes.url }
+					href={ getSafeUrl( props.attributes.url ) }
 					aria-label={ props.attributes.title }
 				>
 					<span className="screen-reader-text">{ props.attributes.title }</span>
