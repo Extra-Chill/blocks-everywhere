@@ -42,6 +42,8 @@ jobs:
     uses: Extra-Chill/homeboy-action/.github/workflows/release.yml@v2
     with:
       dry-run: ${{ inputs.dry-run || false }}
+      # Our default branch is trunk; the shared workflow only releases from main by default.
+      release-branch: trunk
       # Deploy on release instead of waiting for the poller (Extra-Chill/extrachill#1092).
       dispatch-repo: Extra-Chill/extrachill
       dispatch-event: component-released
