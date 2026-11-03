@@ -16,7 +16,7 @@ import { pencil } from '@wordpress/icons';
  * External dependencies
  */
 import React from 'react';
-import { fetchAttributes, getContentTypeFromUrl, SupportContentBlockAttributes } from './block';
+import { fetchAttributes, getContentTypeFromUrl, getSafeUrl, SupportContentBlockAttributes } from './block';
 import { EmbedPlaceHolder } from './embed-placeholder';
 import { SupportContentEmbed } from './support-content-embed';
 import { ContentBlockIcon } from './content-block-icon';
@@ -89,7 +89,7 @@ export const Edit = compose( withNotices )( ( props: EditProps ) => {
 							await fetchBlockAttributes();
 						} }
 						cancel={ () => {
-							const link = <a href={ url }>{ url }</a>;
+							const link = <a href={ getSafeUrl( url ) }>{ url }</a>;
 							const newBlock = createBlock( 'core/paragraph', {
 								content: renderToString( link ),
 							} );

@@ -61,6 +61,13 @@ function bbpress_context( Engine $engine ) {
 		'bbp_edit_forum_pre_content',
 	];
 
+	// Run after bbPress encoding has restored block delimiters, even without an editor.
+	foreach ( $save_filters as $filter ) {
+		add_filter( $filter, function ( $content ) use ( $engine ) {
+			return $engine->filter_context_content( 'bbpress', 'remove_blocks_slashed', $content );
+		}, 12 );
+	}
+
 	return [
 		'type'             => 'bbpress',
 		'textarea'         => '.bbp-the-content',
@@ -96,7 +103,9 @@ function bbpress_context( Engine $engine ) {
 		'after_load'       => function ( Engine $engine ) use ( $save_filters ) {
 			// Save filters — empty block check + pasted image cleanup.
 			foreach ( $save_filters as $filter ) {
-				add_filter( $filter, [ $engine, 'no_empty_block_content' ], 12 );
+				add_filter( $filter, function ( $content ) use ( $engine ) {
+					return $engine->filter_context_content( 'bbpress', 'no_empty_block_content', $content );
+				}, 12 );
 				add_filter( $filter, __NAMESPACE__ . '\\bbpress_convert_pasted_images', 12 );
 			}
 

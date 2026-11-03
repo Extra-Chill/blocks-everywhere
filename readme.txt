@@ -15,7 +15,7 @@ Switches the default WordPress editor for comments, bbPress, and BuddyPress to u
 
 Admin moderation is also upgraded to use Gutenberg, and blocks are processed on the front end.
 
-For extra security the list of available blocks is determined by the allowed tags from WordPress.
+For extra security the list of available blocks is determined by the allowed tags from WordPress. Disallowed blocks, including nested blocks, are removed on save and render. Customize the server allowlist with `blocks_everywhere_allowed_blocks`, which receives the block list and context type.
 
 Gutenberg is not bundled and instead is side-loaded from WordPress. For better compatibility you should use the plugin version of Gutenberg, which is typically several versions ahead of the one included in WordPress.
 
@@ -75,7 +75,7 @@ Some settings are available through the settings object, which is filterable wit
 `pastePlainText` - Convert all pasted content to plain text
 `patchEmoji` - set to `true` to stop twemoji from affecting the editor
 `blocksEverywhere.allowEmbeds` - List of enabled embeds
-`blocksEverywhere.blocks.allowBlocks` - List of enabled blocks
+`blocksEverywhere.blocks.allowBlocks` - Blocks offered in the editor. Use `blocks_everywhere_allowed_blocks` to permit blocks on save and render.
 `blocksEverywhere.className` - String of classes to be assigned to the editor.
 `blocksEverywhere.__experimentalOnChange` - An optional callback that is triggered when the blocks are changed.
 `blocksEverywhere.__experimentalOnInput` - An optional callback that is triggered when text is input.
@@ -104,12 +104,12 @@ Content Embed block uses REST API to fetch content to be embedded. This means th
 
 Blocks Everywhere enables topic REST API on its own, so if the site with bbPress have this plugin installed and configured, its topics can be embedded.
 
-To enable Content Embed block in the editor, pass these settings to `blocks_everywhere_editor_settings` filter:
+To enable Content Embed on save, render, and in the editor, add it to the server allowlist:
 
 `
-add_filter( 'blocks_everywhere_editor_settings', function( $settings ) {
-	$settings['blocksEverywhere']['blocks']['allowBlocks'][] = 'blocks-everywhere/support-content';
-	return $settings;
+add_filter( 'blocks_everywhere_allowed_blocks', function( $blocks ) {
+	$blocks[] = 'blocks-everywhere/support-content';
+	return $blocks;
 } );
 `
 

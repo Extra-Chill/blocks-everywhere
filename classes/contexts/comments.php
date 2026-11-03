@@ -37,7 +37,7 @@ function comments_context( Engine $engine ) {
 	add_filter(
 		'comment_text',
 		function ( $content ) use ( $engine ) {
-			return $engine->do_blocks( $content, 'comment_text' );
+			return $engine->filter_context_content( 'comments', 'do_blocks', $content, 'comment_text' );
 		},
 		8
 	);
@@ -46,7 +46,7 @@ function comments_context( Engine $engine ) {
 	add_filter(
 		'pre_comment_content',
 		function ( $content ) use ( $engine ) {
-			return $engine->remove_blocks( $content );
+			return $engine->filter_context_content( 'comments', 'remove_blocks_slashed', $content );
 		}
 	);
 

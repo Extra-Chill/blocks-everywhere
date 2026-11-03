@@ -29,11 +29,16 @@ function buddypress_context( Engine $engine ) {
 		remove_filter( 'block_editor_settings', 'bp_blocks_editor_settings' );
 	}
 
+	// Always enforce the allowlist on save, including requests without an editor.
+	add_filter( 'bp_activity_content_before_save', function ( $content ) use ( $engine ) {
+		return $engine->filter_context_content( 'buddypress', 'remove_blocks', $content );
+	} );
+
 	// Content display filter.
 	add_filter(
 		'bp_get_activity_content_body',
 		function ( $content ) use ( $engine ) {
-			return $engine->do_blocks( $content, 'bp_get_activity_content_body' );
+			return $engine->filter_context_content( 'buddypress', 'do_blocks', $content, 'bp_get_activity_content_body' );
 		},
 		8
 	);

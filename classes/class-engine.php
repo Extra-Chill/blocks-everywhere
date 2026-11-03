@@ -60,6 +60,20 @@ class Engine extends Handler {
 	 */
 	private $active_context = null;
 
+	/** @var string|null Context of the current server-side content operation. */
+	private $content_type = null;
+
+	/** Run a content operation with the correct allowlist, even before an editor loads. */
+	public function filter_context_content( $type, $method, ...$args ) {
+		$previous = $this->content_type;
+		$this->content_type = $type;
+		try {
+			return $this->$method( ...$args );
+		} finally {
+			$this->content_type = $previous;
+		}
+	}
+
 	/**
 	 * Contexts whose server bootstrap callbacks have already been wired.
 	 *
@@ -489,6 +503,10 @@ class Engine extends Handler {
 	 * @return string
 	 */
 	public function get_editor_type() {
+		if ( null !== $this->content_type ) {
+			return $this->content_type;
+		}
+
 		if ( $this->active_context && isset( $this->contexts[ $this->active_context ] ) ) {
 			return $this->contexts[ $this->active_context ]['type'] ?? 'core';
 		}
@@ -585,7 +603,7 @@ class Engine extends Handler {
 	 * @return string
 	 */
 	public function no_empty_block_content( $content ) {
-		$stripped = do_blocks( $content );
+		$stripped = $this->do_blocks( $content, 'blocks_everywhere_no_empty_block_content' );
 		$stripped = wp_strip_all_tags( $stripped );
 		$stripped = trim( $stripped );
 
