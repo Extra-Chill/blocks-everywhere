@@ -333,19 +333,29 @@ class Engine extends Handler {
 						return $classes;
 					}
 
-					$classes = $this->body_class( (array) $classes );
-
-					$body_classes = $config['body_classes'];
-					if ( is_callable( $body_classes ) ) {
-						$classes = call_user_func( $body_classes, $classes, $this, $id, $config );
-					} elseif ( is_array( $body_classes ) ) {
-						$classes = array_merge( $classes, $body_classes );
-					}
-
-					return array_values( array_unique( (array) $classes ) );
+					return $this->resolve_context_body_classes( $this->body_class( (array) $classes ), $id, $config );
 				}
 			);
 		}
+	}
+
+	/**
+	 * Apply a context's `body_classes` config on top of the engine scope classes.
+	 *
+	 * @param string[] $classes Classes that already include the engine scope classes.
+	 * @param string   $id      Context identifier.
+	 * @param array    $config  Context configuration.
+	 * @return string[]
+	 */
+	private function resolve_context_body_classes( array $classes, string $id, array $config ) {
+		$body_classes = $config['body_classes'] ?? null;
+		if ( is_callable( $body_classes ) ) {
+			$classes = call_user_func( $body_classes, $classes, $this, $id, $config );
+		} elseif ( is_array( $body_classes ) ) {
+			$classes = array_merge( $classes, $body_classes );
+		}
+
+		return array_values( array_unique( (array) $classes ) );
 	}
 
 	/**
@@ -442,6 +452,19 @@ class Engine extends Handler {
 		$disallowed_block_variations = $this->resolve_context_value( $config['disallowed_block_variations'] ?? null, $settings, $id, $config );
 		if ( is_array( $disallowed_block_variations ) ) {
 			$settings['blocksEverywhere']['blockVariations']['disallow'] = array_values( $disallowed_block_variations );
+		}
+
+		// Contexts that opt into body classes also ship them in the editor
+		// settings. A context whose trigger fires after <body> is printed (the
+		// comment form, for example) cannot add them through the body_class
+		// filter, so the client applies them to <body> when the editor mounts.
+		if ( array_key_exists( 'body_classes', $config ) ) {
+			$scope_classes = [ 'gutenberg-support' ];
+			if ( ! empty( $settings['editor']['hasUploadPermissions'] ) ) {
+				$scope_classes[] = 'gutenberg-support-upload';
+			}
+
+			$settings['blocksEverywhere']['bodyClasses'] = $this->resolve_context_body_classes( $scope_classes, $id, $config );
 		}
 
 		$entity_bridge = $this->resolve_context_value( $config['entity_bridge'] ?? null, $settings, $id, $config );

@@ -139,5 +139,6 @@ class Context_Bootstrap_Test extends TestCase {
 		$this->assertSame( [ [ 'slug' => 'portable', 'title' => 'Portable' ] ], apply_filters( 'block_categories_all', [], null ) );
 		$this->assertSame( [ 'core/paragraph' => [ 'name' => 'core/paragraph' ] ], apply_filters( 'blocks_everywhere_server_block_settings', [], null ) );
 		$this->assertSame( [ 'gutenberg-support', 'portable-editor-ready' ], apply_filters( 'body_class', [] ) );
+		$this->assertSame( [ 'gutenberg-support', 'portable-editor-ready' ], $settings['blocksEverywhere']['bodyClasses'] );
 	}
 }

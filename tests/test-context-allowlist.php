@@ -53,6 +53,12 @@ class Context_Allowlist_Test extends TestCase {
 		$this->assertContains( 'core/paragraph', $GLOBALS['__rendered_blocks'] );
 	}
 
+	public function testCommentsContextOptsIntoBodyClasses() {
+		// The comment form loads after <body>, so the scope classes must reach
+		// the page through the editor settings (#comments dark mode).
+		$this->assertTrue( comments_context( $this->engine )['body_classes'] );
+	}
+
 	public function testPlainContentIsUnchanged() {
 		$plain = ' plain <b>HTML</b> and &lt;!-- wp:rss /--&gt;';
 		$this->assertSame( $plain, $this->engine->remove_blocks( $plain ) );

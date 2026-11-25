@@ -73,4 +73,20 @@ describe( 'page-global editor setup', () => {
 		cleanupReattached();
 		expect( firstContainer.classList.contains( 'blocks-everywhere--patch-emoji' ) ).toBe( false );
 	} );
+
+	it( 'adds context body classes to the page body', () => {
+		document.body.className = 'existing';
+		const { applyPageGlobalEditorSettings } = loadSetupModule();
+		const container = document.createElement( 'div' );
+
+		applyPageGlobalEditorSettings(
+			{ blocksEverywhere: { bodyClasses: [ 'gutenberg-support', '', 42, 'gutenberg-support-upload' ] } },
+			container
+		);
+
+		expect( document.body.classList.contains( 'existing' ) ).toBe( true );
+		expect( document.body.classList.contains( 'gutenberg-support' ) ).toBe( true );
+		expect( document.body.classList.contains( 'gutenberg-support-upload' ) ).toBe( true );
+		expect( document.body.classList ).toHaveLength( 3 );
+	} );
 } );
