@@ -59,6 +59,7 @@ function ensureEmojiPatchInstalled() {
  * variation allow-list. Each unique variation is removed at most once. The
  * twemoji replacement is installed once, but its behavior is limited to
  * containers for editor instances that explicitly enable `patchEmoji`.
+ * `blocksEverywhere.bodyClasses` are added to <body> and kept for the page.
  *
  * @param settings  Resolved settings for one editor instance.
  * @param container Editor container for instance-scoped emoji behavior.
@@ -81,6 +82,15 @@ export function applyPageGlobalEditorSettings( settings, container: HTMLElement 
 
 		window?.wp?.blocks?.unregisterBlockVariation?.( blockName, variationName );
 		removedBlockVariations.add( key );
+	} );
+
+	// Scope classes for contexts whose editor loads after <body> is printed.
+	// They stay for the life of the page, like the server-added body classes.
+	const bodyClasses = settings?.blocksEverywhere?.bodyClasses;
+	( Array.isArray( bodyClasses ) ? bodyClasses : [] ).forEach( ( className ) => {
+		if ( typeof className === 'string' && className ) {
+			document?.body?.classList?.add( className );
+		}
 	} );
 
 	if ( settings?.patchEmoji ) {

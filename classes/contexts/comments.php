@@ -64,10 +64,13 @@ function comments_context( Engine $engine ) {
 	);
 
 	return [
-		'type'       => 'comments',
-		'textarea'   => '#comment',
-		'container'  => '.blocks-everywhere',
-		'trigger'    => 'comment_form_after',
-		'admin_hook' => 'comment.php',
+		'type'         => 'comments',
+		'textarea'     => '#comment',
+		'container'    => '.blocks-everywhere',
+		'trigger'      => 'comment_form_after',
+		'admin_hook'   => 'comment.php',
+		// The comment form loads after <body> is printed, so these reach the
+		// page through the editor settings rather than the body_class filter.
+		'body_classes' => true,
 	];
 }
