@@ -2,6 +2,11 @@
 
 All notable changes to Blocks Everywhere are documented in this file.
 
+## [3.6.2] - 2026-11-25
+
+### Fixed
+- apply editor scope body classes for contexts that load after <body>
+
 ## [3.6.1] - 2026-11-03
 
 ### Changed
