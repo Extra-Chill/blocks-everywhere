@@ -155,8 +155,9 @@ function EditorShell( {
 		return <>{ children( false ) }</>;
 	}
 
+	// Share BE's boundary registry: a nested sub-registry drops inherited private selectors.
 	return (
-		<EditorProvider post={ post } settings={ editorSettings }>
+		<EditorProvider post={ post } settings={ editorSettings } useSubRegistry={ false }>
 			<AutosaveMonitor />
 			<LocalAutosaveMonitor />
 			{ children( true ) }
